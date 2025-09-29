@@ -1950,6 +1950,9 @@ function getFocusableElementsInContainer(container) {
 
 document.addEventListener('keydown', (event) => {
     
+    // Check for Enter key by keyCode for maximum compatibility
+    const isEnterKey = event.key === 'Enter' || event.keyCode === 13;
+    
     // --- Custom Alert Handling (Priority 1) ---
     if (customAlertModal.dataset.isActive === 'true') {
         const key = event.key;
@@ -1960,7 +1963,7 @@ document.addEventListener('keydown', (event) => {
         } else if (key === 'ArrowRight') {
             event.preventDefault();
             navigateCustomAlert('right');
-        } else if (key === 'Enter') {
+        } else if (isEnterKey) { // Check for Enter key
             event.preventDefault();
             const focusedButton = customAlertButtons.querySelector('.focused');
             if (focusedButton) {
@@ -2012,7 +2015,7 @@ document.addEventListener('keydown', (event) => {
             return;
         }
         
-        if (key === 'Enter') {
+        if (isEnterKey) { // Check for Enter key
             if (focused && focused.click) {
                 focused.click();
                 event.preventDefault();
@@ -2118,7 +2121,7 @@ document.addEventListener('keydown', (event) => {
              if (guideFocusables.length === 0) return;
              
              // Handle Enter/Click in Guide
-             if (key === 'Enter') {
+             if (isEnterKey) { // Check for Enter key
                  if (focused && guideOverlay.contains(focused)) {
                      focused.click();
                      event.preventDefault();
@@ -2182,7 +2185,7 @@ document.addEventListener('keydown', (event) => {
                     const currentIndex = focusables.indexOf(focused);
                     if (currentIndex === -1) {
                         // If unfocused, focus the first element
-                        focusables[0].focus();
+                        if (focusables.length > 0) focusables[0].focus();
                         return;
                     }
                     
@@ -2215,7 +2218,7 @@ document.addEventListener('keydown', (event) => {
             }
         } 
         
-        if (key === 'Enter') {
+        if (isEnterKey) { // Check for Enter key
             const focusedElement = document.activeElement;
             if (focusedElement && focusedElement.click) {
                 focusedElement.click();
@@ -2375,7 +2378,7 @@ document.addEventListener('keydown', (event) => {
         }
 
 
-        if (key === 'Enter') {
+        if (isEnterKey) { // Check for Enter key
             const focusedElement = document.activeElement;
             if (focusedElement && focusedElement.click) {
                 focusedElement.click();
@@ -2423,7 +2426,13 @@ if (typeof Hls === 'undefined') {
 }
 
 // Initial focus setup (optional, but good for immediate use)
-document.querySelector('.nav-button.active').focus();
+setTimeout(() => {
+    // Give focus to the active tab, which should allow arrow keys to immediately navigate to channel buttons
+    const initialFocus = document.querySelector('.nav-button.active');
+    if (initialFocus) {
+        initialFocus.focus();
+    }
+}, 0);
 
 
 // --- Generic Keyboard Navigation Helper ---
@@ -2437,8 +2446,9 @@ document.querySelector('.nav-button.active').focus();
 function navigateGeneric(container, direction) {
     // Only search within the visible, active view or the player UI
     let focusables = getFocusableElementsInContainer(container).filter(el => {
-        // Filter out hidden elements by checking offsetParent
-        return el.offsetWidth > 0 || el.offsetHeight > 0;
+        // Filter out hidden elements by checking offsetParent and display/visibility styles
+        const style = window.getComputedStyle(el);
+        return (el.offsetWidth > 0 || el.offsetHeight > 0) && style.visibility !== 'hidden' && style.display !== 'none';
     });
     
     // Sort focusables by their top/left position for predictable navigation
@@ -2458,13 +2468,15 @@ function navigateGeneric(container, direction) {
 
     // If nothing is focused, start from the beginning for UP/DOWN/LEFT/RIGHT
     if (currentIndex === -1) {
+        // Fallback: If current focus is not in the list, start at the beginning
         return focusables[0];
     }
     
-    let nextIndex = currentIndex;
-    
     // Simple linear navigation for L/R in a single row (like nav bars or player controls)
-    if (direction === 'left' || direction === 'right') {
+    const isHorizontalContainer = container.id === 'main-nav' || container.id === 'player-ui';
+
+    if (isHorizontalContainer && (direction === 'left' || direction === 'right')) {
+        let nextIndex;
         if (direction === 'right') {
             nextIndex = (currentIndex + 1) % focusables.length;
         } else { // left
@@ -2473,7 +2485,7 @@ function navigateGeneric(container, direction) {
         return focusables[nextIndex];
     }
     
-    // Complex UP/DOWN navigation (finding the nearest element vertically)
+    // Complex UP/DOWN navigation (finding the nearest element vertically) and L/R in complex grid
     const currentRect = focused.getBoundingClientRect();
     let nearest = null;
     let shortestDistance = Infinity;
@@ -2494,6 +2506,14 @@ function navigateGeneric(container, direction) {
         else if (direction === 'down' && rect.top > currentRect.top) {
             isCandidate = true;
         }
+        // LEFT: Candidate must be to the left of the current element (only check if not horizontal container)
+        else if (!isHorizontalContainer && direction === 'left' && rect.left < currentRect.left) {
+             isCandidate = true;
+        }
+        // RIGHT: Candidate must be to the right of the current element (only check if not horizontal container)
+        else if (!isHorizontalContainer && direction === 'right' && rect.left > currentRect.left) {
+             isCandidate = true;
+        }
         
         if (isCandidate) {
             // Calculate a combined distance (Euclidean distance might be too complex for a grid, 
@@ -2501,8 +2521,13 @@ function navigateGeneric(container, direction) {
             const dx = Math.abs(rect.left - currentRect.left);
             const dy = Math.abs(rect.top - currentRect.top);
             
-            // Prioritize vertical proximity over horizontal alignment
-            const distance = dy + dx * 0.1; 
+            // Prioritize primary direction
+            let distance;
+            if (direction === 'up' || direction === 'down') {
+                distance = dy + dx * 0.1; // Vertical priority
+            } else { // left or right (grid navigation)
+                distance = dx + dy * 0.1; // Horizontal priority
+            }
             
             if (distance < shortestDistance) {
                 shortestDistance = distance;
@@ -2511,23 +2536,16 @@ function navigateGeneric(container, direction) {
         }
     }
     
-    // Fallback: If no "nearest" found in the specific direction (e.g., at top/bottom of list), 
-    // revert to simple next/prev element in the sorted list.
     if (!nearest) {
-        if (direction === 'down') {
-            nextIndex = (currentIndex + 1) % focusables.length;
-        } else { // up
-            nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
+        // If spatial navigation fails, fall back to linear navigation based on DOM sort order (especially for lists)
+        if (direction === 'down' || direction === 'right') {
+            nextIndex = currentIndex + 1;
+            if (nextIndex < focusables.length) return focusables[nextIndex];
+        } else if (direction === 'up' || direction === 'left') {
+            nextIndex = currentIndex - 1;
+            if (nextIndex >= 0) return focusables[nextIndex];
         }
-        // Only wrap around if we have many elements, otherwise clamp at the list bounds
-        if (nextIndex > currentIndex && direction === 'down') {
-            // If wrapping from last to first, only allow if list is large or intended behavior
-            return null; // Don't wrap from bottom to top automatically
-        }
-        if (nextIndex < currentIndex && direction === 'up') {
-            return null; // Don't wrap from top to bottom automatically
-        }
-        // Re-evaluate: If we reach the end/start, we should probably just return the current index or null
+        
         return null; 
     }
     

@@ -284,8 +284,16 @@ function hideCustomAlert() {
                 const lastFocusedButton = document.querySelector('#player-ui .focusable:focus');
                 if (!lastFocusedButton) {
                     // If exiting from fullscreen, focus returns to the stop button if in player mode
-                    uiStopButton.focus(); 
+                    // Focus the first available control if in player mode
+                    const controls = getFocusableElementsInContainer(playerUI);
+                    if (controls.length > 0) controls[0].focus(); 
                 }
+            } else {
+                 // Restore focus to the main view's active element
+                 const activeNavButton = document.querySelector(`#main-nav button[data-view="${currentView}"]`);
+                 if (activeNavButton) {
+                    activeNavButton.focus();
+                 }
             }
         }, 0);
     }, 300); // Wait for the opacity transition time
@@ -1288,6 +1296,12 @@ function exitFullscreenPlayer() {
         const activeNavButton = document.querySelector(`#main-nav button[data-view="${currentView}"]`);
         if (activeNavButton) {
             activeNavButton.focus();
+        } else {
+            // Fallback to the first channel button if in live TV view
+            const firstChannel = document.querySelector('.channel-button');
+            if (firstChannel) {
+                firstChannel.focus();
+            }
         }
     }, 0);
 }
@@ -1343,7 +1357,14 @@ function hideGuideOverlay() {
     
     // Restore focus to the guide button or video player
     setTimeout(() => {
-        uiGuideButton.focus();
+        // Try to focus on the guide button first if it's visible
+        if (uiGuideButton.style.display !== 'none') {
+            uiGuideButton.focus();
+        } else {
+            // Fallback to the stop button or the first control
+            const controls = getFocusableElementsInContainer(playerUI);
+            if (controls.length > 0) controls[0].focus();
+        }
     }, 0);
 }
 
@@ -1400,6 +1421,11 @@ function handleChannelSwitch(channelId) {
                     setTimeout(() => {
                         currentChannelId = channelId;
                         enterFullscreenPlayer(channel.url, channel.name, false, 'video');
+                        // Ensure focus returns to the player controls after switch
+                        setTimeout(() => {
+                            const controls = getFocusableElementsInContainer(playerUI);
+                            if (controls.length > 0) controls[0].focus();
+                        }, 500);
                     }, 500); 
                 } else {
                     // If canceled, restore focus and remain on current channel
@@ -1943,7 +1969,12 @@ document.addEventListener('keydown', (event) => {
         } else if (key === 'Escape') {
             // Treat escape as clicking the default/first button
             event.preventDefault();
-            activeAlertButtons[0].click();
+            
+            // Find the default button if one exists, otherwise click the first one
+            const defaultButton = activeAlertButtons.find(btn => btn.textContent.toLowerCase().includes('cancel')) || activeAlertButtons[0];
+            if (defaultButton) {
+                defaultButton.click();
+            }
         }
         return; // Block all other input while alert is active
     }
@@ -2096,62 +2127,23 @@ document.addEventListener('keydown', (event) => {
                  }
              }
 
-             // Handle Guide Movement (L/R for programs, U/D for channel rows)
-             if (key === 'ArrowLeft' || key === 'ArrowRight') {
-                 // Horizontal movement: only for programs
-                 if (focused && focused.classList.contains('guide-program')) {
-                     const focusables = guideFocusables.filter(el => el.classList.contains('guide-program'));
-                     const programIndex = focusables.indexOf(focused);
-                     
-                     if (programIndex !== -1) {
-                         event.preventDefault();
-                         let nextIndex = (programIndex + (key === 'ArrowRight' ? 1 : -1));
-                         
-                         if (nextIndex >= 0 && nextIndex < focusables.length) {
-                             focusables[nextIndex].focus();
-                             focusables[nextIndex].scrollIntoView({ behavior: 'smooth', inline: 'nearest' });
-                         }
-                     }
-                 }
-             } else if (key === 'ArrowUp' || key === 'ArrowDown') {
+             // Use generic navigation for robustness in older browsers
+             if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
                  event.preventDefault();
-                 const channelEntries = Array.from(document.querySelectorAll('.guide-channel-entry'));
-                 const guideBack = document.getElementById('guide-back-button');
                  
-                 let currentChannelIndex = -1;
-                 
-                 if (focused === guideBack) {
-                    if (key === 'ArrowDown' && channelEntries.length > 0) {
-                        channelEntries[0].focus();
-                        return;
-                    }
-                 }
+                 let direction;
+                 if (key === 'ArrowLeft') direction = 'left';
+                 else if (key === 'ArrowRight') direction = 'right';
+                 else if (key === 'ArrowUp') direction = 'up';
+                 else direction = 'down';
 
-                 if (focused.classList.contains('guide-channel-entry')) {
-                     currentChannelIndex = channelEntries.indexOf(focused);
-                 } else if (focused.classList.contains('guide-program')) {
-                      const focusedChannelId = focused.dataset.channelId;
-                      currentChannelIndex = channelEntries.findIndex(e => e.dataset.channelId === focusedChannelId);
-                 }
+                 const nextElement = navigateGeneric(guideOverlay, direction);
                  
-                 if (currentChannelIndex !== -1) {
-                     let newChannelIndex;
-                     if (key === 'ArrowDown') {
-                         newChannelIndex = currentChannelIndex + 1;
-                         if (newChannelIndex >= channelEntries.length) return; // Clamped at the bottom
-                     } else { // ArrowUp
-                         newChannelIndex = currentChannelIndex - 1;
-                         if (newChannelIndex < 0) {
-                            // Go back to the back button
-                            guideBack.focus();
-                            return;
-                         }
-                     }
-                     
-                     channelEntries[newChannelIndex].focus();
-                     channelEntries[newChannelIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                     return;
+                 if (nextElement) {
+                     nextElement.focus();
+                     nextElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
                  }
+                 return; 
              }
 
              return; // Stop processing player controls if guide is open
@@ -2167,65 +2159,87 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 3. Navigation within Player UI (Arrow keys, Enter)
-        if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'Enter') {
+        const focused = document.activeElement;
+        
+        if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
             
-            // Check if focus is on UI controls before intercepting horizontal arrows
-            const focused = document.activeElement;
-            const focusables = getFocusableElementsInContainer(playerUI);
-            const currentIndex = focusables.indexOf(focused);
-
-            // If a button is focused, perform UI navigation
-            if (currentIndex !== -1) {
-                if (key === 'ArrowRight') {
-                    event.preventDefault();
-                    let nextIndex = (currentIndex + 1) % focusables.length;
+            // Check if focus is on UI controls or if we should initiate focus
+            const focusables = getFocusableElementsInContainer(playerUI).filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+            
+            // Only perform UI navigation if we are actively focused on a UI element OR if we press UP/DOWN
+            if (playerUI.contains(focused) || focused === tvPlayer || key === 'ArrowUp' || key === 'ArrowDown') {
+                 
+                let direction;
+                if (key === 'ArrowLeft') direction = 'left';
+                else if (key === 'ArrowRight') direction = 'right';
+                else if (key === 'ArrowUp') direction = 'up';
+                else direction = 'down';
+                
+                // For player UI, we simplify navigation to L/R if focus is inside the UI bar.
+                if (key === 'ArrowLeft' || key === 'ArrowRight') {
+                    event.preventDefault(); 
+                    
+                    const currentIndex = focusables.indexOf(focused);
+                    if (currentIndex === -1) {
+                        // If unfocused, focus the first element
+                        focusables[0].focus();
+                        return;
+                    }
+                    
+                    let nextIndex = (currentIndex + (key === 'ArrowRight' ? 1 : -1) + focusables.length) % focusables.length;
                     focusables[nextIndex].focus();
-                } else if (key === 'ArrowLeft') {
+                    return;
+                }
+                
+                // UP/DOWN in player mode is less common for navigation, 
+                // but if implemented, it should move focus from the video/off-UI to the UI bar.
+                if (key === 'ArrowDown') {
+                    // Try to focus the first element in the UI bar
                     event.preventDefault();
-                    let nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
-                    focusables[nextIndex].focus();
-                } else if (key === 'Enter') {
-                    // If we are already focused on a button in the UI, execute it.
-                    if (focused && playerUI.contains(focused)) {
-                        focused.click();
-                        event.preventDefault();
+                    if (!playerUI.contains(focused) && focusables.length > 0) {
+                        focusables[0].focus();
+                        return;
                     }
                 }
-                return; // Stop here if navigating UI buttons
             }
             
             // If horizontal arrows are pressed AND we are in video mode (not image, not guide), perform seeking
             if (tvPlayer.style.display === 'block' && uiRecordButton.style.display !== 'none' && (key === 'ArrowLeft' || key === 'ArrowRight')) {
                  event.preventDefault(); // Consume arrow key press
                  if (key === 'ArrowLeft') {
-                    seekBackward(SEEK_INTERVAL); // Do not show overlay for keyboard arrows
+                    seekBackward(SEEK_INTERVAL, true); // Show overlay for keyboard arrows
                  } else {
-                    seekForward(SEEK_INTERVAL); // Do not show overlay for keyboard arrows
+                    seekForward(SEEK_INTERVAL, true); // Show overlay for keyboard arrows
                  }
-                 // Do not return here if the user might press Enter later, 
-                 // but since we prevented default, the seeking is done.
+                 // Do not return here, we proceed to check other key mappings
             }
-        } else if (key === 'Enter') {
-            // If we are not focused on a button, check if Enter should still click something (e.g., if we were previously focused)
-            const focused = document.activeElement;
-            if (focused && playerUI.contains(focused)) {
-                focused.click();
+        } 
+        
+        if (key === 'Enter') {
+            const focusedElement = document.activeElement;
+            if (focusedElement && focusedElement.click) {
+                focusedElement.click();
+                event.preventDefault();
+            } else if (tvPlayer.style.display === 'block') {
+                // If nothing specific focused, treat Enter as Play/Pause
+                togglePlayPause();
                 event.preventDefault();
             }
+            return;
         }
         
         // Only allow channel switching/R/C/G/P2P if watching a LIVE stream 
         if (tvPlayer.style.display === 'block' && uiRecordButton.style.display !== 'none') {
             
-            // 3. Horizontal seeking using Arrow Keys
-            if (key === 'ArrowLeft') {
-                 event.preventDefault(); // Consume arrow key press
-                 seekBackward(SEEK_INTERVAL); // Do not show overlay
-                 return;
-            } else if (key === 'ArrowRight') {
-                 event.preventDefault(); // Consume arrow key press
-                 seekForward(SEEK_INTERVAL); // Do not show overlay
-                 return;
+            // 3. Horizontal seeking using Media Keys (168, 208) - handled in the seek overlay block, but repeated here for when overlay is hidden
+            if (keyCode === 168) { // Rewind/R/Skip Back
+                event.preventDefault();
+                seekBackward(SEEK_INTERVAL, true); // Show overlay
+                return;
+            } else if (keyCode === 208) { // Fast Forward/FF/Skip Forward
+                event.preventDefault();
+                seekForward(SEEK_INTERVAL, true); // Show overlay
+                return;
             }
 
             // 4. Media Keys for Recording and Playback (New)
@@ -2317,71 +2331,54 @@ document.addEventListener('keydown', (event) => {
         const key = event.key;
         const focused = document.activeElement;
         
-        // Note: Guide view is primarily handled in the player now. 
-        // If we switch to 'guide' via main nav, the fallback logic applies, but we simplify keyboard guide navigation here.
+        // --- Generic Main Menu Navigation ---
+        if (key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown') {
+             event.preventDefault();
 
-        if (key === 'ArrowLeft' || key === 'ArrowRight') {
-            const isNavButton = focused && focused.closest('#main-nav') && focused.classList.contains('nav-button');
-            const isGuideSidebar = focused && focused.closest('#guide-channels');
-            const isGuideTimeline = focused && focused.closest('#guide-timeline');
-            
-            // Removed internal guide navigation since it's now handled by the overlay logic above.
-            
-            if (isNavButton) {
-                const navButtonsArray = Array.from(navButtons);
-                const currentIndex = navButtonsArray.indexOf(focused);
-                if (currentIndex === -1) return;
-                
-                event.preventDefault();
-                let nextIndex = (currentIndex + (key === 'ArrowRight' ? 1 : -1) + navButtonsArray.length) % navButtonsArray.length;
-                navButtonsArray[nextIndex].focus();
-            }
-            
-        }
+             let direction;
+             if (key === 'ArrowLeft') direction = 'left';
+             else if (key === 'ArrowRight') direction = 'right';
+             else if (key === 'ArrowUp') direction = 'up';
+             else direction = 'down';
 
-        if (key === 'ArrowUp' || key === 'ArrowDown') {
-            const currentViewElement = document.getElementById(`${currentView}-view`);
-            if (!currentViewElement) return;
-
-            // Define focusables based on current view
-            let focusables = getFocusableElementsInContainer(currentViewElement);
-
-            // Removed specific guide navigation from main UI since it is now an overlay
-            
-            const focused = document.activeElement;
-            const currentIndex = focusables.indexOf(focused);
-            
-            if (focusables.length > 0) {
-                 event.preventDefault(); // Prevent scrolling
-                 
-                 let nextIndex;
-                 if (currentIndex === -1) {
-                     // Start focusing on the first focusable element in the view
-                     nextIndex = 0;
-                 } else {
-                     
-                     // Default vertical navigation for other views (Live TV list, Recordings list, Captures list)
-                     if (key === 'ArrowDown') {
-                         nextIndex = (currentIndex + 1); // Allow going past last element, but browser usually clamps
-                     } else { // ArrowUp
-                         nextIndex = (currentIndex - 1);
-                     }
-                     
-                     // Clamp index for generic navigation
-                     nextIndex = Math.max(0, Math.min(nextIndex, focusables.length - 1));
-
-                     if (currentIndex !== nextIndex) {
-                        focusables[nextIndex].focus();
-                        // Ensure visibility when navigating lists
-                        focusables[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                     }
+             // Determine the container based on the currently focused element
+             let container = document.getElementById(`${currentView}-view`);
+             if (focused.closest('#main-nav')) {
+                 container = document.getElementById('main-nav'); // Treat nav bar as a separate horizontal container
+             } else if (!container) {
+                 // Fallback if view is not found, use body
+                 container = document.body;
+             }
+             
+             // If navigating the top nav bar, force horizontal navigation
+             if (container.id === 'main-nav') {
+                 const nextElement = navigateGeneric(container, direction === 'up' || direction === 'down' ? 'right' : direction); // Treat U/D as L/R wrap
+                 if (nextElement) nextElement.focus();
+                 return;
+             }
+             
+             // For general view navigation, use the complex logic
+             const nextElement = navigateGeneric(container, direction);
+             
+             if (nextElement) {
+                 nextElement.focus();
+                 // Ensure visibility when navigating lists
+                 nextElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+             } else if (direction === 'up') {
+                 // If at the top of a list, try to jump to the nav bar
+                 const navButtonsArray = Array.from(navButtons);
+                 if (navButtonsArray.length > 0) {
+                     navButtonsArray.find(btn => btn.dataset.view === currentView)?.focus();
                  }
-            }
+             }
+
         }
+
 
         if (key === 'Enter') {
-            if (focused && (focused.tagName === 'BUTTON' || focused.classList.contains('guide-program') || focused.classList.contains('guide-channel-entry'))) {
-                focused.click();
+            const focusedElement = document.activeElement;
+            if (focusedElement && focusedElement.click) {
+                focusedElement.click();
                 event.preventDefault();
             }
         }
@@ -2427,3 +2424,112 @@ if (typeof Hls === 'undefined') {
 
 // Initial focus setup (optional, but good for immediate use)
 document.querySelector('.nav-button.active').focus();
+
+
+// --- Generic Keyboard Navigation Helper ---
+
+/**
+ * Finds the next focusable element (native focusable or .focusable class) within a container
+ * @param {HTMLElement} container The root element to search within (e.g., document.body or a specific view)
+ * @param {string} direction 'up', 'down', 'left', or 'right'
+ * @returns {HTMLElement | null} The next element to focus, or null if none found.
+ */
+function navigateGeneric(container, direction) {
+    // Only search within the visible, active view or the player UI
+    let focusables = getFocusableElementsInContainer(container).filter(el => {
+        // Filter out hidden elements by checking offsetParent
+        return el.offsetWidth > 0 || el.offsetHeight > 0;
+    });
+    
+    // Sort focusables by their top/left position for predictable navigation
+    focusables = focusables.map(el => {
+        const rect = el.getBoundingClientRect();
+        return { el, x: rect.left, y: rect.top };
+    }).sort((a, b) => {
+        // Sort primarily by Y (top) and secondarily by X (left)
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+    }).map(item => item.el);
+
+    if (focusables.length === 0) return null;
+
+    const focused = document.activeElement;
+    let currentIndex = focusables.indexOf(focused);
+
+    // If nothing is focused, start from the beginning for UP/DOWN/LEFT/RIGHT
+    if (currentIndex === -1) {
+        return focusables[0];
+    }
+    
+    let nextIndex = currentIndex;
+    
+    // Simple linear navigation for L/R in a single row (like nav bars or player controls)
+    if (direction === 'left' || direction === 'right') {
+        if (direction === 'right') {
+            nextIndex = (currentIndex + 1) % focusables.length;
+        } else { // left
+            nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
+        }
+        return focusables[nextIndex];
+    }
+    
+    // Complex UP/DOWN navigation (finding the nearest element vertically)
+    const currentRect = focused.getBoundingClientRect();
+    let nearest = null;
+    let shortestDistance = Infinity;
+    
+    for (let i = 0; i < focusables.length; i++) {
+        const el = focusables[i];
+        if (el === focused) continue;
+
+        const rect = el.getBoundingClientRect();
+        
+        let isCandidate = false;
+        
+        // UP: Candidate must be above the current element
+        if (direction === 'up' && rect.top < currentRect.top) {
+            isCandidate = true;
+        }
+        // DOWN: Candidate must be below the current element
+        else if (direction === 'down' && rect.top > currentRect.top) {
+            isCandidate = true;
+        }
+        
+        if (isCandidate) {
+            // Calculate a combined distance (Euclidean distance might be too complex for a grid, 
+            // prioritizing vertical distance + small horizontal penalty works well)
+            const dx = Math.abs(rect.left - currentRect.left);
+            const dy = Math.abs(rect.top - currentRect.top);
+            
+            // Prioritize vertical proximity over horizontal alignment
+            const distance = dy + dx * 0.1; 
+            
+            if (distance < shortestDistance) {
+                shortestDistance = distance;
+                nearest = el;
+            }
+        }
+    }
+    
+    // Fallback: If no "nearest" found in the specific direction (e.g., at top/bottom of list), 
+    // revert to simple next/prev element in the sorted list.
+    if (!nearest) {
+        if (direction === 'down') {
+            nextIndex = (currentIndex + 1) % focusables.length;
+        } else { // up
+            nextIndex = (currentIndex - 1 + focusables.length) % focusables.length;
+        }
+        // Only wrap around if we have many elements, otherwise clamp at the list bounds
+        if (nextIndex > currentIndex && direction === 'down') {
+            // If wrapping from last to first, only allow if list is large or intended behavior
+            return null; // Don't wrap from bottom to top automatically
+        }
+        if (nextIndex < currentIndex && direction === 'up') {
+            return null; // Don't wrap from top to bottom automatically
+        }
+        // Re-evaluate: If we reach the end/start, we should probably just return the current index or null
+        return null; 
+    }
+    
+    return nearest;
+}

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live TVz</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "react": "https://esm.sh/react@18.3.1?dev",
+                "react-dom": "https://esm.sh/react-dom@18.3.1?dev",
+                "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?dev",
+                "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime?dev",
+                "react/jsx-dev-runtime": "https://esm.sh/react@18.3.1/jsx-dev-runtime?dev",
+                "remotion": "https://esm.sh/remotion@4.0.350?external=react,react-dom&dev",
+                "@websim/remotion/player": "https://esm.websim.com/@websim/remotion/player",
+                "@remotion/player": "https://esm.sh/@remotion/player@4.0.350?external=react,react-dom&dev"
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+    <script type="module" src="recorder.jsx"></script>
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Live TVz</h1>
+        <nav id="main-nav">
+            <button class="nav-button active" data-view="live-tv">Live TV</button>
+            <button class="nav-button" data-view="recordings">Recordings</button>
+            <button class="nav-button" data-view="captures">Captures</button>
+        </nav>
+    </header>
+    <main id="main-content">
+        <div id="live-tv-view" class="view active">
+            <h2>Current Channels</h2>
+            <div class="channel-list">
+                <button class="channel-button focusable" data-channel-id="1" data-channel-url="https://c402-node61-cdn.connectmedia.hu/150106/70ab723615bc8a634a45a5aad84c39ab/68d99429/index.m3u8" data-channel-name="Duna World">
+                    1. Duna World
+                </button>
+                <button class="channel-button focusable" data-channel-id="2" data-channel-url="https://c402-node61-cdn.connectmedia.hu/110101/a97828deb07e70d70b41d3032a7de1b2/68da2a2b/index.m3u8" data-channel-name="M1">
+                    2. M1
+                </button>
+                <button class="channel-button focusable" data-channel-id="3" data-channel-url="https://c201-node61-cdn.connectmedia.hu/110102/2449392930b8d80b9a5e80c1a9be8b0e/68da2b55/index.m3u8" data-channel-name="M2">
+                    3. M2
+                </button>
+            </div>
+        </div>
+        <div id="recordings-view" class="view hidden">
+            <h2>Your Recordings</h2>
+            <ul id="recordings-list">
+                <!-- Recordings will be added here -->
+            </ul>
+            <p id="no-recordings" style="text-align: center;">No recordings yet. Hit 'Record' while watching TV!</p>
+        </div>
+        
+        <div id="captures-view" class="view hidden">
+            <h2>Your Captures (Screenshots)</h2>
+            <ul id="captures-list">
+                <!-- Captures will be added here -->
+            </ul>
+            <p id="no-captures" style="text-align: center;">No screenshots yet. Hit 'Capture' while watching TV!</p>
+        </div>
+
+        <!-- The main Guide view is removed from main-content, but kept here as a fallback view -->
+        <div id="guide-view" class="view hidden">
+            <!-- Content here will only be shown if accessed via main nav, which is less likely now -->
+            <h2>Example Guide (Standalone)</h2>
+            <p>Please access Guide via the player controls for the intended experience.</p>
+        </div>
+
+    </main>
+
+    <div id="video-container" class="hidden">
+        <video id="tv-player" controls></video>
+        <img id="media-viewer-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain;" alt="Capture viewer">
+        
+        <!-- Numerical Channel Selection UI -->
+        <div id="channel-number-display" class="hidden"></div>
+        
+        <!-- Seek/DVR Overlay (New) -->
+        <div id="seek-overlay" class="hidden">
+            <div class="seek-preview-container">
+                <!-- The video player itself provides the screen preview -->
+                <div id="seek-time">00:00:00</div>
+                <div id="seek-indicator"></div>
+            </div>
+            <div class="seek-progress-bar">
+                <div id="seek-current-time">00:00:00</div>
+                <div class="progress-bar-container">
+                    <div id="progress-live-edge">Live</div>
+                    <div id="progress-buffer"></div>
+                    <div id="progress-seek-thumb"></div>
+                </div>
+                <div id="seek-live-time">Live</div>
+            </div>
+        </div>
+        
+        <!-- Recording Status Overlay (New) -->
+        <div id="recording-status-overlay" class="hidden">
+            <div class="recording-status-content">
+                <div class="recording-indicator">
+                    <span class="red-dot"></span>
+                    <span class="status-text">Recording...</span>
+                </div>
+                <div id="recording-timestamp">00:00:00</div>
+                <div class="recording-controls">
+                    <button id="ui-record-pause" class="focusable">Pause</button>
+                    <button id="ui-record-stop" class="focusable">Stop</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Guide Overlay -->
+        <div id="guide-overlay" class="hidden">
+            <div class="guide-header">
+                <button id="guide-back-button" class="focusable">← Back to Live TV</button>
+                <span id="guide-real-time-clock"></span>
+            </div>
+            <div class="guide-container">
+                <div id="guide-channels" class="guide-sidebar">
+                    <!-- Channel names will be injected here -->
+                </div>
+                <div id="guide-timeline" class="guide-content">
+                    <!-- Program grid will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="player-ui" class="hidden">
+            <div class="ui-bar">
+                <span id="ui-channel-name"></span>
+                <div class="ui-controls">
+                    <button id="ui-rewind-button" class="focusable">≪ 10s</button>
+                    <button id="ui-play-pause-button" class="focusable">Pause</button>
+                    <button id="ui-fast-forward-button" class="focusable">10s ≫</button>
+                    <button id="ui-guide-button" class="focusable">Guide</button>
+                    <button id="ui-record-button" class="focusable">Record</button>
+                    <button id="ui-capture-button" class="focusable">Capture</button>
+                    <button id="ui-stop-button" class="focusable">Exit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Remotion Player Container for rendering recordings -->
+    <div id="remotion-player-container" style="display: none;"></div>
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="hidden">
+        <div class="custom-alert-content">
+            <p id="custom-alert-message"></p>
+            <div id="custom-alert-buttons">
+                <!-- Buttons injected here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- WiFi File Transfer Modal -->
+    <div id="p2p-transfer-modal" class="hidden">
+        <div class="transfer-content">
+            <button id="p2p-close-button" class="close-button focusable">X</button>
+            <h3 id="transfer-header">Share Content</h3>
+            <p id="transfer-message">Select content to share or enter a code to receive.</p>
+            
+            <div id="transfer-mode-selection">
+                <button id="transfer-share-mode" class="focusable">Share Content</button>
+                <button id="transfer-receive-mode" class="focusable">Receive Content</button>
+            </div>
+            
+            <div id="transfer-share-ui" class="hidden">
+                <h4>Select Item to Share:</h4>
+                <select id="transfer-content-select">
+                    <!-- Options injected here -->
+                </select>
+                <button id="transfer-generate-code" class="focusable">Generate Sharing Code</button>
+                <p id="transfer-code-display" class="hidden">Code: <span id="sharing-code"></span></p>
+                <p id="transfer-status-share"></p>
+            </div>
+            
+            <div id="transfer-receive-ui" class="hidden">
+                <h4>Enter Sharing Code:</h4>
+                <input type="text" id="transfer-code-input" placeholder="e.g., A1B2C3" maxlength="6">
+                <button id="transfer-start-receive" class="focusable">Receive</button>
+                <p id="transfer-status-receive"></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

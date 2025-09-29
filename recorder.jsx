@@ -3,10 +3,16 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { Player } from "@websim/remotion/player";
 import { RecordingComposition } from "./composition.jsx";
-function startSuccessAnimationRender(channelName, recordingName, durationSeconds, callback) {
+function startSuccessAnimationRender(channelName, recordingName, durationSeconds, updateProgressCallback, callback) {
   const container = document.getElementById("remotion-player-container");
   container.style.display = "block";
-  const root = createRoot(container);
+  let root = container.dataset.root;
+  if (root) {
+    root = JSON.parse(root);
+  } else {
+    root = createRoot(container);
+    container.dataset.root = JSON.stringify(root);
+  }
   const COMP_ID = "RecordingComposition";
   const FPS = 30;
   const DURATION_FRAMES = 90;
@@ -32,7 +38,7 @@ function startSuccessAnimationRender(channelName, recordingName, durationSeconds
       false,
       {
         fileName: "<stdin>",
-        lineNumber: 28,
+        lineNumber: 37,
         columnNumber: 9
       },
       this
@@ -42,7 +48,6 @@ function startSuccessAnimationRender(channelName, recordingName, durationSeconds
     const playerElement = document.getElementById("RecordingPlayer");
     if (!playerElement) {
       console.error("Remotion Player element not found.");
-      root.unmount();
       container.style.display = "none";
       callback(false, new Error("Player element not found"));
       return;
@@ -56,15 +61,16 @@ function startSuccessAnimationRender(channelName, recordingName, durationSeconds
       height: HEIGHT,
       defaultProps: animationProps,
       onProgress: (progress) => {
+        if (updateProgressCallback) {
+          updateProgressCallback(progress);
+        }
       }
     }).then(async (result) => {
       console.log("FFmpeg simulation finished. Success animation rendered.");
-      root.unmount();
       container.style.display = "none";
       callback(true);
     }).catch((err) => {
       console.error("FFmpeg simulation failed (Remotion error):", err);
-      root.unmount();
       container.style.display = "none";
       callback(false, err);
     });

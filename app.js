@@ -17,6 +17,7 @@ const uiPlayPauseButton = document.getElementById('ui-play-pause-button');
 const uiGuideButton = document.getElementById('ui-guide-button'); // New Guide button
 const uiRewindButton = document.getElementById('ui-rewind-button'); // New Rewind button
 const uiFastForwardButton = document.getElementById('ui-fast-forward-button'); // New Fast Forward button
+const uiCCButton = document.getElementById('ui-cc-button'); // NEW CC button
 const channelNumberDisplay = document.getElementById('channel-number-display');
 
 // Seek Overlay Elements (New)
@@ -75,6 +76,51 @@ const noRecordingsMessage = document.getElementById('no-recordings');
 const capturesList = document.getElementById('captures-list'); // New capture list
 const noCapturesMessage = document.getElementById('no-captures'); // New no captures message
 
+// Settings View Elements (New)
+const settingsView = document.getElementById('settings-view');
+const themeSelect = document.getElementById('theme-select');
+const applyThemeButton = document.getElementById('apply-theme-button');
+
+// New Settings Controls
+const fontSelect = document.getElementById('font-select'); // New element
+const liveTvFramesSelect = document.getElementById('live-tv-frames');
+const liveTvQualitySelect = document.getElementById('live-tv-quality');
+const recordingConversionSelect = document.getElementById('recording-conversion');
+const openColorPickerButton = document.getElementById('open-color-picker-button');
+const buttonColorDisplay = document.getElementById('button-color-display');
+
+// NEW Captions Style Elements
+const captionFontSelect = document.getElementById('caption-font-select');
+const captionTextColorInput = document.getElementById('caption-text-color-input');
+const captionTextTransparencyInput = document.getElementById('caption-text-transparency-input');
+const captionTextTransparencyDisplay = document.getElementById('caption-text-transparency-display');
+const captionBgColorInput = document.getElementById('caption-bg-color-input');
+const captionBgTransparencyInput = document.getElementById('caption-bg-transparency-input');
+const captionBgTransparencyDisplay = document.getElementById('caption-bg-transparency-display');
+const captionOutlineSelect = document.getElementById('caption-outline-select');
+const captionShadowSelect = document.getElementById('caption-shadow-select');
+
+// NEW Captions Size and Position Elements
+const captionSizeSelect = document.getElementById('caption-size-select');
+const captionPositionSelect = document.getElementById('caption-position-select');
+
+// NEW Language and Scale controls
+const languageSelect = document.getElementById('language-select');
+const guiScaleSelect = document.getElementById('gui-scale-select');
+
+// Color Picker Modal Elements
+const colorPickerModal = document.getElementById('color-picker-modal');
+const colorPickerCloseButton = document.getElementById('color-picker-close-button');
+const htmlColorInput = document.getElementById('html-color-input');
+const colorSwatchesContainer = document.getElementById('color-swatches');
+const applyColorButton = document.getElementById('apply-color-button');
+
+// Notification Elements (New)
+const notificationPopup = document.getElementById('notification-popup');
+const notificationMessage = document.getElementById('notification-message');
+let audioContext = null;
+let recordingSuccessBuffer = null; // This will hold the "tada" sound
+
 // Guide elements
 const guideChannelsContainer = document.getElementById('guide-channels');
 const guideTimelineContainer = document.getElementById('guide-timeline');
@@ -87,6 +133,7 @@ let currentChannelId = null;
 let currentChannelName = '';
 let isRecording = false;
 let isRecordingPaused = false; // New state for recording pause
+let isCCEnabled = false; // NEW state for Closed Captioning
 let mediaRecorder = null; // Media Recorder API instance
 let recordedChunks = []; // Array to hold recorded data chunks
 let recordingStartTime = 0; // Timestamp for recording duration
@@ -111,10 +158,144 @@ const channelMap = {
     1: { name: "Duna World", url: "https://c402-node61-cdn.connectmedia.hu/150106/70ab723615bc8a634a45a5aad84c39ab/68d99429/index.m3u8" },
     2: { name: "M1", url: "https://c402-node61-cdn.connectmedia.hu/110101/a97828deb07e70d70b41d3032a7de1b2/68da2a2b/index.m3u8" },
     3: { name: "M2", url: "https://c201-node61-cdn.connectmedia.hu/110102/2449392930b8d80b9a5e80c1a9be8b0e/68da2b55/index.m3u8" },
+    4: { name: "M4 Sport", url: "https://c201-node62-cdn.connectmedia.hu/150104/601bd25e6c88cddcca86c4ba45ec8927/68da9e5a/index.m3u8" },
+    5: { name: "M4 Sport 2", url: "https://c202-node62-cdn.connectmedia.hu/150108/b56fb5c15b2ae8656c345b9179797fe4/68da9f78/index.m3u8" },
+    6: { name: "M4 Sport 3", url: "https://c201-node62-cdn.connectmedia.hu/150109/e95304df4cb1ee757c003fe9b7a5c0fb/68daa00f/index.m3u8" },
+    7: { name: "M4 Sport 4", url: "https://c201-node61-cdn.connectmedia.hu/150110/323ab759df9f3e03809c580b8a485898/68daa076/index.m3u8" },
+    8: { name: "M4 Sport 5", url: "https://c402-node61-cdn.connectmedia.hu/150111/d73176fe0f6fe995c8a4f4da4b388b84/68daa0c8/index.m3u8" },
+};
+
+// --- Dynamic Configuration Variables ---
+let RECORDING_FPS = 60; // Default, loaded from settings
+let RECORDING_BITRATE = 10000000; // Default, loaded from settings
+let RECORDING_FORMAT = 'mp4'; // Default, loaded from settings
+let BUTTON_COLOR = '#00bcd4'; // Default cyan
+let FONT_FAMILY = 'sans-serif'; // New: Default font
+
+// NEW Caption Style Defaults
+const CAPTION_STYLE_DEFAULTS = {
+    captionFont: 'sans-serif',
+    captionTextColor: '#ffffff',
+    captionTextOpacity: 100,
+    captionBgColor: '#000000',
+    captionBgOpacity: 80,
+    captionOutline: 'none',
+    captionShadow: 'none',
+    captionSize: 'medium', // NEW default size
+    captionPosition: 'bottom', // NEW default position
+};
+
+// NEW Localization and GUI Scale Variables
+let CURRENT_LANGUAGE = 'en';
+let GUI_SCALE = 'medium'; // 'small', 'medium', 'large'
+
+// Flag URL Map
+const FLAG_URLS = {
+    'en': 'https://flagpedia.net/data/flags/h240/us.webp',
+    'hu': 'https://flagpedia.net/data/flags/h240/hu.webp',
+    'pl': 'https://flagpedia.net/data/flags/h240/pl.webp',
+    'ru': 'https://flagpedia.net/data/flags/h240/ru.webp',
+};
+
+// Localization Map (Basic translation of key static UI elements)
+const LANG_MAP = {
+    'en': {
+        'live-tv': 'Live TV',
+        'recordings': 'Recordings',
+        'captures': 'Captures',
+        'settings': 'Settings',
+        'channels': 'Current Channels',
+        'your-recordings': 'Your Recordings',
+        'your-captures': 'Your Captures (Screenshots)',
+        'settings-h2': 'Settings',
+        'appearance': 'Appearance',
+        'select-theme': 'Select Theme:',
+        'apply-theme': 'Apply Theme',
+        'select-font': 'Select Font Family:',
+        'btn-custom': 'Button Customization',
+        'primary-color': 'Primary Button Color:',
+        'choose-color': 'Choose Color',
+        'tv-quality-recording': 'Live TV Quality & Recording',
+        'tv-frames': 'Live TV Frames (FPS):',
+        'tv-quality': 'Live TV Quality (Bitrate Mbps):',
+        'recording-conversion': 'Recording Conversion Format:',
+        'select-language': 'Select Language:',
+        'gui-scale': 'GUI Scale:',
+    },
+    'hu': {
+        'live-tv': 'Élő TV',
+        'recordings': 'Felvételek',
+        'captures': 'Képernyőképek',
+        'settings': 'Beállítások',
+        'channels': 'Jelenlegi csatornák',
+        'your-recordings': 'Saját felvételek',
+        'your-captures': 'Saját Képernyőképek',
+        'settings-h2': 'Beállítások',
+        'appearance': 'Megjelenés',
+        'select-theme': 'Válasszon témát:',
+        'apply-theme': 'Alkalmazza a témát',
+        'select-font': 'Válasszon betűtípust:',
+        'btn-custom': 'Gomb testreszabása',
+        'primary-color': 'Elsődleges gomb színe:',
+        'choose-color': 'Szín kiválasztása',
+        'tv-quality-recording': 'Élő TV minőség és felvétel',
+        'tv-frames': 'Élő TV képkocka (FPS):',
+        'tv-quality': 'Élő TV minőség (Bitráta Mbps):',
+        'recording-conversion': 'Felvétel konverziós formátuma:',
+        'select-language': 'Válasszon nyelvet:',
+        'gui-scale': 'GUI skála:',
+    },
+    'pl': {
+        'live-tv': 'TV na żywo',
+        'recordings': 'Nagrania',
+        'captures': 'Zrzuty ekranu',
+        'settings': 'Ustawienia',
+        'channels': 'Aktualne kanały',
+        'your-recordings': 'Twoje nagrania',
+        'your-captures': 'Twoje zrzuty ekranu',
+        'settings-h2': 'Ustawienia',
+        'appearance': 'Wygląd',
+        'select-theme': 'Wybierz motyw:',
+        'apply-theme': 'Zastosuj motyw',
+        'select-font': 'Wybierz rodzinę czcionek:',
+        'btn-custom': 'Dostosowanie przycisków',
+        'primary-color': 'Główny kolor przycisku:',
+        'choose-color': 'Wybierz kolor',
+        'tv-quality-recording': 'Jakość TV na żywo i nagrywanie',
+        'tv-frames': 'Klatki TV na żywo (FPS):',
+        'tv-quality': 'Jakość TV na żywo (Bitrate Mbps):',
+        'recording-conversion': 'Format konwersji nagrania:',
+        'select-language': 'Wybierz język:',
+        'gui-scale': 'Skala GUI:',
+    },
+    'ru': {
+        'live-tv': 'Прямой эфир',
+        'recordings': 'Записи',
+        'captures': 'Скриншоты',
+        'settings': 'Настройки',
+        'channels': 'Текущие каналы',
+        'your-recordings': 'Ваши записи',
+        'your-captures': 'Ваши скриншоты',
+        'settings-h2': 'Настройки',
+        'appearance': 'Внешний вид',
+        'select-theme': 'Выбрать тему:',
+        'apply-theme': 'Применить тему',
+        'select-font': 'Выбрать шрифт:',
+        'btn-custom': 'Настройка кнопок',
+        'primary-color': 'Основной цвет кнопки:',
+        'choose-color': 'Выбрать цвет',
+        'tv-quality-recording': 'Качество прямого эфира и запись',
+        'tv-frames': 'Кадры в секунду (FPS):',
+        'tv-quality': 'Качество прямого эфира (Битрейт Mbps):',
+        'recording-conversion': 'Формат конвертации записи:',
+        'select-language': 'Выбрать язык:',
+        'gui-scale': 'Масштаб интерфейса:',
+    }
 };
 
 // --- Configuration Constants ---
-const RECORDING_FPS = 30; // Default recording FPS. Could be adjusted in a future settings menu.
+const UPLOAD_SIMULATION_MAX_PROGRESS = 0.20; // Upload finishes at 20%
+const REMOTION_SIMULATION_MIN_PROGRESS = 0.20; // Remotion starts at 20% and goes up to 100%
 
 // --- Guide Configuration Constants ---
 const GUIDE_START_MINUTES = 360; // 6:00 AM
@@ -146,6 +327,40 @@ const STATIC_GUIDE_DATA = {
         { start: 660, duration: 120, name: "Regional News Hour" }, // 11:00 - 1:00 (660-780)
         { start: 780, duration: 90, name: "Classical Music Block" }, // 1:00 - 2:30 (780-870)
         { start: 870, duration: 210, name: "Late Afternoon Drama Series" }, // 2:30 - 6:00 (870-1080)
+    ],
+    4: [ // M4 Sport (New)
+        { start: 360, duration: 120, name: "Sports Morning" }, // 6:00 - 8:00
+        { start: 480, duration: 120, name: "E-Sport Tournament Highlights" }, // 8:00 - 10:00
+        { start: 600, duration: 60, name: "Live Athletics: Marathon" }, // 10:00 - 11:00
+        { start: 660, duration: 150, name: "Football Analysis" }, // 11:00 - 1:30
+        { start: 810, duration: 150, name: "Afternoon Match Live" }, // 1:30 - 4:00
+        { start: 960, duration: 120, name: "Prime Time Sports News" }, // 4:00 - 6:00
+    ],
+    5: [ // M4 Sport 2 (New)
+        { start: 360, duration: 180, name: "Tennis Replay" }, // 6:00 - 9:00
+        { start: 540, duration: 180, name: "Archived Olympic Events" }, // 9:00 - 12:00
+        { start: 720, duration: 120, name: "Swimming Practice Live" }, // 12:00 - 2:00
+        { start: 840, duration: 240, name: "Regional Basketball League" }, // 2:00 - 6:00
+    ],
+    6: [ // M4 Sport 3 (New)
+        { start: 360, duration: 60, name: "Morning Warmup" }, // 6:00 - 7:00
+        { start: 420, duration: 120, name: "Cycling Tour Stage 1" }, // 7:00 - 9:00
+        { start: 540, duration: 180, name: "Handball Highlights" }, // 9:00 - 12:00
+        { start: 720, duration: 180, name: "International Horse Racing" }, // 12:00 - 3:00
+        { start: 900, duration: 180, name: "Motor Sports Magazine" }, // 3:00 - 6:00
+    ],
+    7: [ // M4 Sport 4 (New)
+        { start: 360, duration: 120, name: "Adventure Sports Showcase" }, // 6:00 - 8:00
+        { start: 480, duration: 120, name: "Fitness Workout Class" }, // 8:00 - 10:00
+        { start: 600, duration: 180, name: "Golf Tournament Day 2" }, // 10:00 - 1:00
+        { start: 780, duration: 150, name: "Volleyball Championship" }, // 1:00 - 3:30
+        { start: 930, duration: 150, name: "Local Sports Interviews" }, // 3:30 - 6:00
+    ],
+    8: [ // M4 Sport 5 (New)
+        { start: 360, duration: 180, name: "Water Polo Training" }, // 6:00 - 9:00
+        { start: 540, duration: 120, name: "Fencing World Cup Replay" }, // 9:00 - 11:00
+        { start: 660, duration: 120, name: "Live Commentary Block" }, // 11:00 - 1:00
+        { start: 780, duration: 300, name: "Multi-Sport Coverage" }, // 1:00 - 6:00
     ]
 };
 
@@ -193,6 +408,462 @@ function saveCaptures() {
     localStorage.setItem('tvz_captures', JSON.stringify(captures));
     renderCapturesList();
 }
+
+// --- Theme Management ---
+
+const DEFAULT_SETTINGS = {
+    theme: 'dark',
+    fps: 60,
+    bitrate: 10000000,
+    format: 'mp4',
+    buttonColor: '#00bcd4', // Default: cyan (little bit dark)
+    fontFamily: 'sans-serif', // New default font
+    language: 'en', // NEW default language
+    guiScale: 'medium', // NEW default scale
+    ...CAPTION_STYLE_DEFAULTS // NEW Caption styles
+};
+
+function loadSettings() {
+    try {
+        const storedSettings = JSON.parse(localStorage.getItem('tvz_settings'));
+        return { ...DEFAULT_SETTINGS, ...storedSettings };
+    } catch (e) {
+        console.error("Could not load settings, using defaults.", e);
+        return DEFAULT_SETTINGS;
+    }
+}
+
+function saveSettings(settings) {
+    localStorage.setItem('tvz_settings', JSON.stringify(settings));
+    applySettings(settings);
+}
+
+function applySettings(settings) {
+    // 1. Theme
+    applyTheme(settings.theme);
+    if (themeSelect) themeSelect.value = settings.theme;
+    
+    // 2. Button Color
+    applyButtonColor(settings.buttonColor);
+
+    // 3. Font Family
+    applyFontFamily(settings.fontFamily);
+    if (fontSelect) fontSelect.value = settings.fontFamily;
+    
+    // NEW: 4. Language and Localization
+    applyLanguage(settings.language);
+    
+    // NEW: 5. GUI Scale
+    applyGuiScale(settings.guiScale);
+
+    // NEW: 6. Captions Style
+    applyCaptionsStyle(settings);
+    
+    // 7. Recording Quality
+    RECORDING_FPS = parseInt(settings.fps);
+    RECORDING_BITRATE = parseInt(settings.bitrate);
+    RECORDING_FORMAT = settings.format;
+
+    // Update UI select boxes
+    if (liveTvFramesSelect) liveTvFramesSelect.value = RECORDING_FPS;
+    if (liveTvQualitySelect) liveTvQualitySelect.value = RECORDING_BITRATE;
+    if (recordingConversionSelect) recordingConversionSelect.value = RECORDING_FORMAT;
+}
+
+function applyTheme(themeName) {
+    if (themeName === 'light') {
+        document.body.classList.add('light-theme');
+    } else {
+        document.body.classList.remove('light-theme');
+    }
+    // Theme setting is now part of the central settings object, but we keep this for legacy storage
+    // localStorage.setItem('tvz_theme', themeName); 
+}
+
+function applyButtonColor(color) {
+    BUTTON_COLOR = color;
+    document.documentElement.style.setProperty('--primary-color', color);
+    
+    // Check luminance to determine primary text color (black or white)
+    const r = parseInt(color.substring(1, 3), 16);
+    const g = parseInt(color.substring(3, 5), 16);
+    const b = parseInt(color.substring(5, 7), 16);
+    // Simple luminance calculation (0 to 255)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b); 
+    const textColor = luminance > 180 ? '#1a1a1a' : 'white'; // Use darker text for brighter backgrounds
+    document.documentElement.style.setProperty('--primary-text-color', textColor);
+
+    // Update the color display circle in settings
+    if (buttonColorDisplay) {
+        buttonColorDisplay.style.backgroundColor = color;
+    }
+}
+
+function applyFontFamily(fontName) {
+    FONT_FAMILY = fontName; // Corrected: use fontName parameter instead of undefined variable 'fontFamily'
+    document.documentElement.style.setProperty('--main-font-family', fontName);
+}
+
+/**
+ * Converts a hex color and opacity percentage (0-100) into an RGBA string.
+ * @param {string} hex Hex color string (#RRGGBB)
+ * @param {number} opacity Opacity percentage (0 to 100)
+ * @returns {string} RGBA string
+ */
+function hexToRgba(hex, opacity) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const a = opacity / 100;
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/**
+ * Applies the selected caption styles to CSS variables.
+ * @param {Object} settings Current application settings object.
+ */
+function applyCaptionsStyle(settings) {
+    const root = document.documentElement.style;
+    
+    // Font
+    root.setProperty('--caption-font-family', settings.captionFont);
+    if (captionFontSelect) captionFontSelect.value = settings.captionFont;
+    
+    // Size (Map semantic size to a REM value)
+    let fontSizeRem = 1.2;
+    switch (settings.captionSize) {
+        case 'small':
+            fontSizeRem = 1.0;
+            break;
+        case 'large':
+            fontSizeRem = 1.5;
+            break;
+        case 'extra-large':
+            fontSizeRem = 2.0;
+            break;
+        case 'medium':
+        default:
+            fontSizeRem = 1.2;
+            break;
+    }
+    root.setProperty('--caption-font-size', `${fontSizeRem}rem`);
+    if (captionSizeSelect) captionSizeSelect.value = settings.captionSize;
+    
+    // Position (Maps position to a vertical alignment setting, 
+    // which is used to position the VTT container if custom rendering is used)
+    let positionVertical = 'end'; // 'start', 'center', 'end' (bottom)
+    switch (settings.captionPosition) {
+        case 'top':
+            positionVertical = 'start';
+            break;
+        case 'center':
+            positionVertical = 'center';
+            break;
+        case 'bottom':
+        default:
+            positionVertical = 'end';
+            break;
+    }
+    // We use a CSS variable that can influence a custom rendering layer's layout
+    root.setProperty('--caption-position-vertical', positionVertical);
+    if (captionPositionSelect) captionPositionSelect.value = settings.captionPosition;
+    
+    // Text Color & Opacity
+    root.setProperty('--caption-text-color', settings.captionTextColor);
+    root.setProperty('--caption-text-opacity', settings.captionTextOpacity / 100);
+    if (captionTextColorInput) captionTextColorInput.value = settings.captionTextColor;
+    if (captionTextTransparencyInput) captionTextTransparencyInput.value = settings.captionTextOpacity;
+    if (captionTextTransparencyDisplay) captionTextTransparencyDisplay.textContent = `${settings.captionTextOpacity}%`;
+    
+    // Background Color & Opacity
+    // To properly support background opacity in a universal way, we modify the background color variable
+    const bgRgba = hexToRgba(settings.captionBgColor, settings.captionBgOpacity);
+    root.setProperty('--caption-bg-color', bgRgba); // Set as RGBA
+    
+    if (captionBgColorInput) captionBgColorInput.value = settings.captionBgColor;
+    if (captionBgTransparencyInput) captionBgTransparencyInput.value = settings.captionBgOpacity;
+    if (captionBgTransparencyDisplay) captionBgTransparencyDisplay.textContent = `${settings.captionBgOpacity}%`;
+
+    // Outline/Shadow/Glow (Text Shadow simulation)
+    let shadowStyle = 'none';
+    
+    // 1. Outline simulation
+    if (settings.captionOutline === 'solid') {
+        shadowStyle += '1px 1px 0 black, -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black';
+    } else if (settings.captionOutline === 'thin') {
+        shadowStyle += '1px 1px 1px white';
+    } else if (settings.captionOutline === 'thick') {
+        shadowStyle += '2px 2px 0px yellow, -2px -2px 0px yellow, 2px -2px 0px yellow, -2px 2px 0px yellow';
+    }
+    
+    // 2. Shadow/Glow simulation
+    if (settings.captionShadow === 'raised') {
+        if (shadowStyle !== 'none') shadowStyle += ', ';
+        shadowStyle = shadowStyle.replace('none', '') + '2px 2px 3px rgba(0, 0, 0, 0.7)';
+    } else if (settings.captionShadow === 'depressed') {
+        if (shadowStyle !== 'none') shadowStyle += ', ';
+        shadowStyle = shadowStyle.replace('none', '') + '1px 1px 1px rgba(255, 255, 255, 0.4), -1px -1px 1px rgba(0, 0, 0, 0.4)';
+    } else if (settings.captionShadow === 'glow') {
+        if (shadowStyle !== 'none') shadowStyle += ', ';
+        shadowStyle = shadowStyle.replace('none', '') + '0 0 5px rgba(255, 255, 255, 0.8)';
+    }
+    
+    if (shadowStyle.startsWith(', ')) {
+        shadowStyle = shadowStyle.substring(2);
+    }
+    
+    root.setProperty('--caption-text-shadow', shadowStyle.trim() === '' ? 'none' : shadowStyle);
+    
+    if (captionOutlineSelect) captionOutlineSelect.value = settings.captionOutline;
+    if (captionShadowSelect) captionShadowSelect.value = settings.captionShadow;
+    
+    // Attempt to force update native video caption style if available
+    // We check if the video element is currently attached to a stream
+    if (tvPlayer.textTracks) {
+         Array.from(tvPlayer.textTracks).forEach(track => {
+            if (track.kind === 'subtitles' || track.kind === 'captions') {
+                 // Even if CC is toggled off in our app, we still want to update the styling 
+                 // in case the user toggles it back on via our CC button or native controls.
+                 
+                 // NOTE: This property change doesn't directly apply the CSS variables 
+                 // to already rendered cues, but it's the necessary step to signal 
+                 // the browser to update the ::cue pseudo-element style.
+                 
+                 // Since our CC button state (isCCEnabled) is not globally saved/restored,
+                 // we rely on it being toggled on/off after loading settings.
+                 // For immediate visibility of style changes, we re-apply the track mode 
+                 // based on the global state, even though this function is called on settings load.
+                 // The actual CC state is managed by toggleClosedCaptioning().
+                 
+                 // If the track is set to 'showing', modifying the CSS variable 
+                 // should trigger a redraw in supporting browsers.
+            }
+        });
+    }
+}
+
+
+/**
+ * Applies the selected language and updates relevant static texts.
+ * @param {string} langCode 
+ */
+function applyLanguage(langCode) {
+    CURRENT_LANGUAGE = langCode;
+    const lang = LANG_MAP[langCode] || LANG_MAP['en'];
+    
+    if (languageSelect) languageSelect.value = langCode;
+
+    // 1. Update Navigation Buttons
+    navButtons.forEach(btn => {
+        const view = btn.dataset.view;
+        if (lang[view]) {
+            btn.textContent = lang[view];
+        }
+    });
+
+    // 2. Update Header/H2s
+    const liveTvH2 = document.querySelector('#live-tv-view h2');
+    if (liveTvH2) liveTvH2.textContent = lang['channels'];
+    const recordingsH2 = document.querySelector('#recordings-view h2');
+    if (recordingsH2) recordingsH2.textContent = lang['your-recordings'];
+    const capturesH2 = document.querySelector('#captures-view h2');
+    if (capturesH2) capturesH2.textContent = lang['your-captures'];
+    const settingsH2 = document.querySelector('#settings-view h2');
+    if (settingsH2) settingsH2.textContent = lang['settings-h2'];
+    
+    // 3. Update Settings Labels/H3s
+    const appearanceH3 = settingsView.querySelector('.settings-section h3');
+    if (appearanceH3) appearanceH3.textContent = lang['appearance']; // Appearance H3
+    
+    const btnCustomH3 = settingsView.querySelector('.settings-section:nth-child(2) h3');
+    if (btnCustomH3) btnCustomH3.textContent = lang['btn-custom']; // Button Customization H3
+    
+    const tvQualityH3 = settingsView.querySelector('.settings-section:nth-child(3) h3');
+    if (tvQualityH3) tvQualityH3.textContent = lang['tv-quality-recording']; // Quality H3
+    
+    // Find labels by innerHTML text (less robust, but necessary without IDs)
+    const labelLang = document.querySelector('label[for="language-select"]');
+    if (labelLang) labelLang.textContent = lang['select-language'];
+    
+    const labelScale = document.querySelector('label[for="gui-scale-select"]');
+    if (labelScale) labelScale.textContent = lang['gui-scale'];
+    
+    const labelTheme = document.querySelector('label[for="theme-select"]');
+    if (labelTheme) labelTheme.textContent = lang['select-theme'];
+    
+    if (applyThemeButton) applyThemeButton.textContent = lang['apply-theme'];
+    
+    const labelFont = document.querySelector('label[for="font-select"]');
+    if (labelFont) labelFont.textContent = lang['select-font'];
+    
+    const labelColor = document.querySelector('label[for="button-color-display"]');
+    if (labelColor) labelColor.textContent = lang['primary-color'];
+    
+    if (openColorPickerButton) openColorPickerButton.textContent = lang['choose-color'];
+    
+    const labelFrames = document.querySelector('label[for="live-tv-frames"]');
+    if (labelFrames) labelFrames.textContent = lang['tv-frames'];
+    
+    const labelQuality = document.querySelector('label[for="live-tv-quality"]');
+    if (labelQuality) labelQuality.textContent = lang['tv-quality'];
+    
+    const labelConversion = document.querySelector('label[for="recording-conversion"]');
+    if (labelConversion) labelConversion.textContent = lang['recording-conversion'];
+}
+
+/**
+ * Applies the GUI scale factor.
+ * @param {string} scale 'small', 'medium', or 'large'
+ */
+function applyGuiScale(scale) {
+    GUI_SCALE = scale;
+    let factor = 1.0;
+    
+    switch (scale) {
+        case 'small':
+            factor = 0.8;
+            break;
+        case 'large':
+            factor = 1.2;
+            break;
+        case 'medium':
+        default:
+            factor = 1.0;
+            break;
+    }
+    
+    document.documentElement.style.setProperty('--scale-factor', factor);
+    if (guiScaleSelect) guiScaleSelect.value = scale;
+}
+
+
+// --- Custom Color Picker Modal ---
+
+function showColorPickerModal() {
+    colorPickerModal.classList.remove('hidden');
+    
+    // Set the HTML input to the current button color
+    htmlColorInput.value = BUTTON_COLOR;
+    
+    // Clear any previous selection class and re-select the matching swatch if available
+    let focusedSwatch = null;
+    colorSwatchesContainer.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.remove('selected');
+        if (swatch.dataset.color.toLowerCase() === BUTTON_COLOR.toLowerCase()) {
+            swatch.classList.add('selected');
+            focusedSwatch = swatch;
+        }
+    });
+
+    // Focus on the close button or the first swatch
+    setTimeout(() => {
+        if (focusedSwatch) {
+            focusedSwatch.focus();
+        } else {
+            colorPickerCloseButton.focus();
+        }
+    }, 0);
+}
+
+function hideColorPickerModal() {
+    colorPickerModal.classList.add('hidden');
+}
+
+// Handle swatch clicks
+colorSwatchesContainer.addEventListener('click', (e) => {
+    const target = e.target;
+    if (target.classList.contains('color-swatch')) {
+        const newColor = target.dataset.color;
+        htmlColorInput.value = newColor;
+        
+        // Update selection and focus
+        colorSwatchesContainer.querySelectorAll('.color-swatch').forEach(swatch => swatch.classList.remove('selected'));
+        target.classList.add('selected');
+        target.focus();
+    }
+});
+
+// Handle applying color
+applyColorButton.addEventListener('click', () => {
+    const newColor = htmlColorInput.value;
+    
+    // 1. Apply immediately for preview
+    applyButtonColor(newColor);
+    
+    // 2. Save settings
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, buttonColor: newColor });
+    
+    showNotification(`Primary button color set to ${newColor}.`);
+    hideColorPickerModal();
+});
+
+colorPickerCloseButton.addEventListener('click', hideColorPickerModal);
+
+
+// --- Audio Utility ---
+
+function initializeAudio() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+async function loadSound(url) {
+    initializeAudio();
+    try {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        // Use the buffer name corresponding to the new sound
+        recordingSuccessBuffer = await audioContext.decodeAudioData(arrayBuffer); 
+    } catch (e) {
+        console.error("Error loading audio:", e);
+    }
+}
+
+function playRecordingSuccessSound() {
+    if (recordingSuccessBuffer && audioContext) {
+        const source = audioContext.createBufferSource();
+        source.buffer = recordingSuccessBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+    } else {
+        console.warn("Recording success sound not loaded or audio context not initialized.");
+    }
+}
+
+// Load the sound asset when the app starts
+loadSound('./recording_tada.mp3'); // Changed asset name
+
+// --- Notification Popup Implementation ---
+
+function showNotification(message, duration = 3000) {
+    // 1. Setup message
+    notificationMessage.textContent = message;
+    
+    // 2. Play sound
+    playRecordingSuccessSound();
+
+    // 3. Apply visibility and animation class
+    // Ensure hidden class is removed before adding visible for animation reset
+    notificationPopup.classList.remove('hidden', 'notification-hiding', 'notification-hidden');
+    // Force reflow
+    void notificationPopup.offsetWidth; 
+    notificationPopup.classList.add('notification-visible');
+    
+    // 4. Set timeout to hide it
+    setTimeout(() => {
+        notificationPopup.classList.remove('notification-visible');
+        notificationPopup.classList.add('notification-hiding');
+        
+        // 5. Hide completely after animation finishes
+        setTimeout(() => {
+            notificationPopup.classList.add('notification-hidden');
+        }, 400); // Match CSS animation duration
+        
+    }, duration);
+}
+
 
 // --- Custom Alert Implementation ---
 
@@ -587,6 +1258,7 @@ function switchView(viewName) {
     recordingsView.classList.add('hidden');
     capturesView.classList.add('hidden'); 
     guideView.classList.add('hidden');
+    settingsView.classList.add('hidden'); // New settings view
     
     // Hide guide overlay if switching to a main menu view
     guideOverlay.classList.add('hidden'); 
@@ -621,8 +1293,48 @@ function switchView(viewName) {
         renderRecordingsList();
     } else if (viewName === 'captures') {
         renderCapturesList();
-    } 
+    } else if (viewName === 'settings') {
+        // Ensure language dropdown is populated/updated when entering settings
+        populateLanguageSelect();
+    }
     // If 'guide' is accessed via main nav, it uses the placeholder, which doesn't need re-rendering.
+}
+
+// Function to populate the language selector with flags
+function populateLanguageSelect() {
+    if (!languageSelect) return;
+    
+    languageSelect.innerHTML = ''; // Clear existing options
+
+    const languages = [
+        { code: 'en', name: 'English (Default)' },
+        { code: 'hu', name: 'Hungarian' },
+        { code: 'pl', name: 'Polish' },
+        { code: 'ru', name: 'Russian' },
+    ];
+    
+    languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        // Use an inner span for the flag icon and text, although <option> doesn't render HTML content well.
+        // For consistent flag display, we usually rely on CSS background images or a custom select implementation.
+        // For standard HTML select, we'll just prepend the flag URL to the text, assuming a custom component would render it.
+        // Since we cannot use custom select component easily, we rely on a hacky visual for the icon.
+        
+        // Option innerHTML is unreliable for complex formatting across browsers. 
+        // We will stick to text content for <select> options for compatibility, and use the language code in the value.
+        option.textContent = `${lang.name}`; 
+        
+        // Add a dataset for the flag URL, which is useful if we were to switch to a custom dropdown
+        option.dataset.flagUrl = FLAG_URLS[lang.code];
+        
+        languageSelect.appendChild(option);
+    });
+
+    // Set the selected value based on current settings
+    if (languageSelect.value !== CURRENT_LANGUAGE) {
+        languageSelect.value = CURRENT_LANGUAGE;
+    }
 }
 
 // --- Guide Rendering ---
@@ -952,7 +1664,7 @@ function renderGuide() {
             // Let's modify: Make guideTimelineContainer the vertical container (overflow-y: hidden, overflow-x: scroll)
             // NO, guide-content already has overflow-x and overflow-y.
             
-            // The timeHeaderScroller is sticky inside guideTimelineContainer. 
+            // The timeHeaderScroller is sticky inside guideContent. 
             // The guideContent element holds the rows.
             
             // The correct synchronisation is needed for horizontal scroll.
@@ -1222,11 +1934,13 @@ function enterFullscreenPlayer(url, name, isStatic = false, mediaType = 'video')
         uiRecordButton.style.display = 'none';
         uiCaptureButton.style.display = 'none';
         uiGuideButton.style.display = 'none';
+        uiCCButton.style.display = 'none'; // Hide CC for static recordings
     } else {
         // Live stream controls
         uiRecordButton.style.display = 'inline-block';
         uiCaptureButton.style.display = 'inline-block';
         uiGuideButton.style.display = 'inline-block'; // Guide available on live view
+        uiCCButton.style.display = 'inline-block'; // Show CC for live view
         
         // Store current channel context if we are viewing a new live channel
         previousChannelContext = { url, name, id: currentChannelId };
@@ -1373,19 +2087,17 @@ function hideGuideOverlay() {
 function showPlayerUI() {
     clearTimeout(uiTimeout);
     
-    // Do not show player UI if recording status overlay is explicitly managing controls
-    // We let the recording status overlay be the only control visible when recording.
-    if (isRecording && !isRecordingPaused) {
-        // If recording is active, keep player UI hidden to minimize distraction, unless manually seeking.
+    // Do not show player UI if the guide overlay or seek overlay are open
+    if (!guideOverlay.classList.contains('hidden') || !seekOverlay.classList.contains('hidden')) {
         playerUI.classList.add('hidden');
-        
-        // Reset the timer, but only if we are moving the mouse/interacting, to prevent the main UI from popping up during recording.
-        // We still need the playerUI to be able to show up if the user interacts, allowing access to guide/capture/stop/etc.
-    } else {
-         playerUI.classList.remove('hidden');
-         // Hide UI after 5 seconds of inactivity
-         uiTimeout = setTimeout(() => hidePlayerUI(5000), 5000);
+        return;
     }
+    
+    // Always show player UI when this function is called (due to user interaction)
+    playerUI.classList.remove('hidden');
+
+    // Hide UI after 5 seconds of inactivity
+    uiTimeout = setTimeout(() => hidePlayerUI(5000), 5000);
 }
 
 // Function to hide the UI bar
@@ -1478,6 +2190,33 @@ function updatePlayPauseButton() {
     uiPlayPauseButton.textContent = tvPlayer.paused ? 'Play' : 'Pause';
 }
 
+/**
+ * Toggles Closed Captioning status.
+ */
+function toggleClosedCaptioning() {
+    isCCEnabled = !isCCEnabled;
+    uiCCButton.textContent = isCCEnabled ? 'CC On' : 'CC Off';
+
+    // In a real scenario, this would involve HLS.js API or JW Player API to switch track.
+    // Since we are simulating, we just notify the user.
+    showNotification(`Closed Captioning is now ${isCCEnabled ? 'ON' : 'OFF'}.`);
+
+    // If a track exists, try to toggle it on the HTML video element directly
+    // This is highly dependent on the stream providing the VTT/TTML tracks.
+    if (tvPlayer.textTracks) {
+        Array.from(tvPlayer.textTracks).forEach(track => {
+            if (track.kind === 'subtitles' || track.kind === 'captions') {
+                // Ensure the track is active when CC is ON
+                track.mode = isCCEnabled ? 'showing' : 'hidden';
+            }
+        });
+    }
+    
+    // If external JW Player is loaded, it might need to be toggled too, but 
+    // we assume the external player automatically hooks into the video element or has its own API.
+    // Since the external script is likely the source of the styling issues, we rely on the native track mode change.
+}
+
 // --- Seek Functionality ---
 
 const SEEK_INTERVAL = 10; // seconds
@@ -1544,8 +2283,19 @@ function seekForward(seconds, showOverlay = false) {
 function updateRecordingTimer() {
     if (!isRecording || isRecordingPaused) return;
 
-    const elapsedMs = Date.now() - recordingStartTime - recordingDurationOffset;
+    // FIX: Correctly calculate elapsed time: 
+    // Time since last start/resume + accumulated time during previous pauses (offset).
+    const elapsedMs = (Date.now() - recordingStartTime) + recordingDurationOffset;
     const totalSeconds = Math.floor(elapsedMs / 1000);
+    
+    // Ensure the timestamp doesn't show garbage if duration is extremely large due to previous errors.
+    // If elapsedMs is still a massive timestamp, something is wrong with recordingStartTime initialization.
+    // However, the formula fix should resolve the primary issue.
+    if (totalSeconds < 0) {
+        recordingTimestamp.textContent = '00:00:00';
+        console.warn('Recording time went negative. Resetting timer.');
+        return;
+    }
     
     recordingTimestamp.textContent = formatSecondsToHHMMSS(totalSeconds);
 }
@@ -1573,17 +2323,26 @@ function startRecording() {
     }
 
     try {
-        const stream = tvPlayer.captureStream();
+        // Use current dynamic FPS setting
+        const stream = tvPlayer.captureStream(RECORDING_FPS);
         
+        // Check for supported MIME types. We prefer VP9/H.264 MP4 if available, 
+        // but default MediaRecorder implementations usually force WebM (VP8/VP9) or MP4 (H.264/AAC).
         let mimeType = 'video/webm';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/webm;codecs=vp8';
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                 throw new Error("WebM recording format not supported by MediaRecorder.");
-            }
+        if (window.MediaRecorder.isTypeSupported('video/mp4; codecs=avc1')) {
+            // Attempt H.264 MP4 if supported for better compatibility with output
+            mimeType = 'video/mp4'; 
+        } else if (window.MediaRecorder.isTypeSupported('video/webm; codecs=vp9,opus')) {
+            mimeType = 'video/webm; codecs=vp9,opus';
+        } else if (window.MediaRecorder.isTypeSupported('video/webm; codecs=vp8,opus')) {
+            mimeType = 'video/webm; codecs=vp8,opus';
         }
         
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        // Note: The bit rate setting is usually a strong suggestion, not a guarantee.
+        mediaRecorder = new MediaRecorder(stream, { 
+            mimeType,
+            videoBitsPerSecond: RECORDING_BITRATE // Use dynamic bitrate
+        });
         recordedChunks = [];
         
         mediaRecorder.ondataavailable = (event) => {
@@ -1616,12 +2375,15 @@ function startRecording() {
         uiRecordPauseButton.textContent = 'Pause';
         uiRecordPauseButton.classList.remove('paused');
         
+        // Ensure dedicated overlay buttons are visible when starting
+        uiRecordPauseButton.style.display = 'inline-block';
+        uiRecordStopButton.style.display = 'inline-block';
+        
         // Hide main player UI until interaction occurs
         playerUI.classList.add('hidden'); 
 
         console.log("Recording started...");
         // Use custom alert for status update
-        // No need for custom alert on start if we have the overlay, but keep for consistency
         // showCustomAlert(`Recording started for ${currentChannelName}!`, [{ text: 'Dismiss', value: true, isDefault: true }]);
 
     } catch (e) {
@@ -1640,6 +2402,9 @@ function resetRecordingState() {
     recordingStartTime = 0;
     recordingDurationOffset = 0;
     
+    // Restore the active recording UI structure (which includes the pause/stop buttons)
+    restoreActiveRecordingUI(); 
+
     // Ensure bottom bar button is visible and correct
     uiRecordButton.classList.remove('hidden');
     uiRecordButton.disabled = false;
@@ -1657,19 +2422,14 @@ function stopRecording(silent = false) {
         mediaRecorder.resume();
     }
     
-    // Note: The duration calculation is finalized in processRecordedData after onstop fires.
-    
     // UI feedback before stopping
     if (!silent) {
         stopRecordingTimer(); // Stop the visual timer
         uiRecordButton.textContent = 'Finalizing...';
         uiRecordButton.disabled = true;
-        recordingStatusOverlay.classList.remove('hidden'); // Keep overlay visible during finalization
-        recordingTimestamp.textContent = 'Finalizing...';
         
-        // Hide dedicated controls temporarily
-        uiRecordPauseButton.style.display = 'none';
-        uiRecordStopButton.style.display = 'none';
+        // Switch recording overlay to processing progress bar view
+        showProcessingUI(UPLOAD_SIMULATION_MAX_PROGRESS / 2); // Start at a visible low percentage for a smooth transition before the upload loop
         
         console.log(`Recording stopped. Starting simulated FFmpeg conversion...`);
     } else {
@@ -1679,6 +2439,23 @@ function stopRecording(silent = false) {
     
     // This triggers mediaRecorder.onstop
     mediaRecorder.stop(); 
+}
+
+function handleDedicatedStopClick() {
+    showCustomAlert("Stop recording and save?", [
+        { text: 'Cancel', value: false },
+        { text: 'Stop & Save', value: true, isDefault: true }
+    ]).then(result => {
+        if (result) {
+            stopRecording(false); // Stop recording gracefully (not silent)
+        } else {
+            // Restore focus to the stop button if canceled
+            setTimeout(() => {
+                const newStopButton = document.getElementById('ui-record-stop');
+                if (newStopButton) newStopButton.focus();
+            }, 0);
+        }
+    });
 }
 
 function pauseResumeRecording() {
@@ -1734,19 +2511,18 @@ function handleRecord() {
     // If the main button is hidden, recording must be active, but this path shouldn't be reached
 }
 
-// Handler for the dedicated stop button in the overlay
-uiRecordStopButton.addEventListener('click', () => {
-    if (isRecording) {
-        showCustomAlert("Are you sure you want to stop and save the recording?", [
-            { text: 'Cancel', value: false },
-            { text: 'Stop & Save', value: true, isDefault: true }
-        ]).then(result => {
-            if (result) {
-                stopRecording(false);
-            }
-        });
+// Handler for the dedicated stop button in the overlay (need a wrapper since original buttons are destroyed/recreated)
+recordingStatusOverlay.addEventListener('click', (e) => {
+    // We only need to handle clicks on buttons if they exist
+    if (e.target.id === 'ui-record-stop') {
+        handleDedicatedStopClick();
+    } else if (e.target.id === 'ui-record-pause') {
+        pauseResumeRecording();
     }
 });
+
+// Handler for the dedicated stop button in the overlay
+uiRecordStopButton.addEventListener('click', handleDedicatedStopClick);
 
 // Handler for the dedicated pause button in the overlay
 uiRecordPauseButton.addEventListener('click', pauseResumeRecording);
@@ -1754,14 +2530,11 @@ uiRecordPauseButton.addEventListener('click', pauseResumeRecording);
 
 async function processRecordedData() {
     // Total duration is calculated by the offset (paused time) + time since last resume/start
+    // FIX: Use the corrected calculation for the final duration
     const finalRecordingTime = (Date.now() - recordingStartTime) + recordingDurationOffset;
     const recordingDuration = finalRecordingTime / 1000;
     
     // Clean up dedicated UI (hiding the overlay happens in resetRecordingState, which is called later)
-    uiRecordPauseButton.style.display = 'inline-block'; // Restore visibility state
-    uiRecordStopButton.style.display = 'inline-block';
-    recordingStatusOverlay.querySelector('.status-text').textContent = 'Recording...';
-
 
     if (recordedChunks.length === 0 || recordingDuration < 1) {
         console.warn("No valid recorded data or recording too short.");
@@ -1776,40 +2549,63 @@ async function processRecordedData() {
     recordedChunks = []; // Clear chunks
     
     const date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const outputExtension = RECORDING_FORMAT; // Use the chosen format
     const recordingName = `${currentChannelName} Recording (${date.substring(0, 16)})`;
     const recordingId = recordings.length + 1;
 
     console.log(`Recorded blob size: ${formatBytes(fileSize)}, duration: ${recordingDuration.toFixed(2)}s. Uploading...`);
     
     try {
-        // 1. Upload the raw WebM/Video blob
-        const videoFile = new File([videoBlob], `recording-${recordingId}.webm`, { type: mediaRecorder.mimeType });
+        // We upload the raw blob, but the filename suggests the desired output format after conversion
+        // Note: websim.upload will automatically infer the file extension from the File object's name
+        const videoFile = new File([videoBlob], `recording-${recordingId}.${outputExtension}`, { type: videoBlob.type });
+        
+        // Simulate upload progress from 0% to UPLOAD_SIMULATION_MAX_PROGRESS (20%)
+        const uploadProgressSteps = 5;
+        // Ensure initial progress is shown immediately before starting the loop
+        updateProcessingProgress(0.0); 
+
+        for (let i = 1; i <= uploadProgressSteps; i++) {
+            const progress = (i / uploadProgressSteps) * UPLOAD_SIMULATION_MAX_PROGRESS;
+            updateProcessingProgress(progress);
+            await new Promise(r => setTimeout(r, 100)); // Small delay for visibility
+        }
+        
         const url = await window.websim.upload(videoFile); 
 
         console.log("Upload successful:", url);
+        updateProcessingProgress(UPLOAD_SIMULATION_MAX_PROGRESS); // Ensure it lands exactly at the max upload progress boundary (20%)
         
         // 2. Save the metadata *immediately* (Decouple save from Remotion success)
         recordings.push({
             id: recordingId,
             name: recordingName,
             channel: currentChannelName,
-            url: url, // URL points to the recorded WebM file
+            url: url, // URL points to the recorded/uploaded file (now with the desired extension in the name)
             date: date,
             size: fileSize,
-            duration_seconds: recordingDuration.toFixed(2)
+            duration_seconds: recordingDuration.toFixed(2),
+            format: outputExtension // Store the intended format
         });
         saveRecordings();
 
         // 3. Simulate FFmpeg conversion using the Remotion success animation
-        startSuccessAnimationRender(currentChannelName, recordingName, recordingDuration, (success, error) => {
+        // Pass the updateProcessingProgress function as the progress callback
+        startSuccessAnimationRender(currentChannelName, recordingName, recordingDuration, (remotionProgress) => {
+             // Remotion progress is 0 to 1. We wrap it to map it 20% to 100%.
+             const remotionRange = 1.0 - REMOTION_SIMULATION_MIN_PROGRESS;
+             const overallProgress = REMOTION_SIMULATION_MIN_PROGRESS + (remotionProgress * remotionRange);
+             updateProcessingProgress(overallProgress);
+        }, (success, error) => {
             
             // 4. Update UI confirmation after success animation completion
             resetRecordingState(); // Reset UI/State regardless of animation result
             
             if (success) {
-                // Audio is handled by Remotion composition.
-                showCustomAlert(`Recorded successfully! File saved: ${recordingName}`, [{ text: 'OK', value: true, isDefault: true }]);
-                
+                // Show notification and play sound upon confirmed conversion success
+                showNotification("Recording done!");
+                // No custom alert needed if using the notification popup
+
             } else {
                  console.error("FFmpeg Conversion Simulation failed (Remotion error):", error);
                  // The recording is already saved (Step 2), so this is a less critical failure.
@@ -1897,6 +2693,7 @@ uiCaptureButton.addEventListener('click', handleCapture);
 uiGuideButton.addEventListener('click', showGuideOverlay); // Use new function for overlay
 uiRewindButton.addEventListener('click', () => seekBackward(SEEK_INTERVAL, false)); // Pass false to hide overlay for button clicks
 uiFastForwardButton.addEventListener('click', () => seekForward(SEEK_INTERVAL, false)); // Pass false to hide overlay for button clicks
+uiCCButton.addEventListener('click', toggleClosedCaptioning); // NEW CC Button listener
 
 // Tab Navigation
 navButtons.forEach(button => {
@@ -1906,6 +2703,140 @@ navButtons.forEach(button => {
         switchView(e.target.dataset.view);
     });
 });
+
+// Settings Event Listener
+applyThemeButton.addEventListener('click', () => {
+    const selectedTheme = themeSelect.value;
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, theme: selectedTheme });
+    showCustomAlert(`Theme set to ${selectedTheme}.`, [{ text: 'OK', value: true, isDefault: true }]);
+});
+
+// NEW Language Setting Listener
+if (languageSelect) {
+    languageSelect.addEventListener('change', (e) => {
+        const newLang = e.target.value;
+        const currentSettings = loadSettings();
+        saveSettings({ ...currentSettings, language: newLang });
+        showNotification(`Language set to ${newLang.toUpperCase()}.`);
+    });
+}
+
+// NEW GUI Scale Setting Listener
+if (guiScaleSelect) {
+    guiScaleSelect.addEventListener('change', (e) => {
+        const newScale = e.target.value;
+        const currentSettings = loadSettings();
+        saveSettings({ ...currentSettings, guiScale: newScale });
+        showNotification(`GUI Scale set to ${newScale}.`);
+    });
+}
+
+// New Font Settings Listener
+fontSelect.addEventListener('change', (e) => {
+    const newFont = e.target.value;
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, fontFamily: newFont });
+    showNotification(`Font set to ${newFont}.`);
+});
+
+// New Quality Settings Listeners (We apply these instantly on change)
+liveTvFramesSelect.addEventListener('change', (e) => {
+    const newFps = parseInt(e.target.value);
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, fps: newFps });
+    showNotification(`Recording FPS set to ${newFps}.`);
+});
+
+liveTvQualitySelect.addEventListener('change', (e) => {
+    const newBitrate = parseInt(e.target.value);
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, bitrate: newBitrate });
+    showNotification(`Recording Bitrate set to ${newBitrate / 1000000} Mbps.`);
+});
+
+recordingConversionSelect.addEventListener('change', (e) => {
+    const newFormat = e.target.value;
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, format: newFormat });
+    showNotification(`Recording conversion format set to ${newFormat.toUpperCase()}.`);
+});
+
+openColorPickerButton.addEventListener('click', showColorPickerModal);
+
+// --- NEW CAPTIONS STYLE LISTENERS ---
+
+function handleCaptionStyleChange(key, value) {
+    const currentSettings = loadSettings();
+    saveSettings({ ...currentSettings, [key]: value });
+    // showNotification(`Caption style updated.`); // Too noisy, skip notification here
+}
+
+// Font
+if (captionFontSelect) {
+    captionFontSelect.addEventListener('change', (e) => {
+        handleCaptionStyleChange('captionFont', e.target.value);
+    });
+}
+
+// Text Color
+if (captionTextColorInput) {
+    captionTextColorInput.addEventListener('input', (e) => {
+        handleCaptionStyleChange('captionTextColor', e.target.value);
+    });
+}
+
+// Text Transparency
+if (captionTextTransparencyInput) {
+    captionTextTransparencyInput.addEventListener('input', (e) => {
+        captionTextTransparencyDisplay.textContent = `${e.target.value}%`;
+        handleCaptionStyleChange('captionTextOpacity', parseInt(e.target.value));
+    });
+}
+
+// Background Color
+if (captionBgColorInput) {
+    captionBgColorInput.addEventListener('input', (e) => {
+        handleCaptionStyleChange('captionBgColor', e.target.value);
+    });
+}
+
+// Background Transparency
+if (captionBgTransparencyInput) {
+    captionBgTransparencyInput.addEventListener('input', (e) => {
+        captionBgTransparencyDisplay.textContent = `${e.target.value}%`;
+        handleCaptionStyleChange('captionBgOpacity', parseInt(e.target.value));
+    });
+}
+
+// Outline Style
+if (captionOutlineSelect) {
+    captionOutlineSelect.addEventListener('change', (e) => {
+        handleCaptionStyleChange('captionOutline', e.target.value);
+    });
+}
+
+// Shadow/Glow Style
+if (captionShadowSelect) {
+    captionShadowSelect.addEventListener('change', (e) => {
+        handleCaptionStyleChange('captionShadow', e.target.value);
+    });
+}
+
+// NEW Size Listener
+if (captionSizeSelect) {
+    captionSizeSelect.addEventListener('change', (e) => {
+        handleCaptionStyleChange('captionSize', e.target.value);
+    });
+}
+
+// NEW Position Listener
+if (captionPositionSelect) {
+    captionPositionSelect.addEventListener('change', (e) => {
+        handleCaptionStyleChange('captionPosition', e.target.value);
+    });
+}
+
 
 // Player Interactivity (to show/hide UI on any activity)
 function resetUITimer() {
@@ -2420,6 +3351,10 @@ renderCapturesList(); // Initialize captures list
 setupCaptureListeners(); // Setup capture list listeners
 renderGuide(); // Initial guide render (to populate the overlay structure)
 
+// Load and apply all settings before anything else
+const initialSettings = loadSettings();
+applySettings(initialSettings);
+
 // Check if HLS object is available globally as expected
 if (typeof Hls === 'undefined') {
     console.error("Hls.js failed to load globally. Check index.html script tag.");
@@ -2551,3 +3486,81 @@ function navigateGeneric(container, direction) {
     
     return nearest;
 }
+
+// Function to update the recording status overlay content for processing state
+function showProcessingUI(progress = 0) {
+    const contentDiv = recordingStatusOverlay.querySelector('.recording-status-content');
+    
+    // Clear existing content and set new structure for progress
+    contentDiv.innerHTML = `
+        <span class="finalizing-text">Processing Recording...</span>
+        <div id="finalizing-progress-percent">${Math.round(progress * 100)}%</div>
+        <div class="finalizing-progress-bar">
+            <div id="finalizing-progress-fill" class="finalizing-progress-bar-fill" style="width: ${progress * 100}%;"></div>
+        </div>
+    `;
+    
+    recordingStatusOverlay.classList.remove('hidden');
+}
+
+// Callback function used by Remotion Player to update progress
+function updateProcessingProgress(overallProgress) {
+    const percentElement = document.getElementById('finalizing-progress-percent');
+    const fillElement = document.getElementById('finalizing-progress-fill');
+    
+    // We now receive the overall progress from 0.0 to 1.0 from processRecordedData or the Remotion wrapper
+    const percentage = Math.round(overallProgress * 100);
+
+    // Clamp the percentage display just in case of over-estimation
+    const displayPercentage = Math.min(100, Math.max(0, percentage));
+
+    
+    // Check for null before attempting to set properties
+    if (percentElement && fillElement) {
+        percentElement.textContent = `${displayPercentage}%`;
+        fillElement.style.width = `${displayPercentage}%`;
+    }
+}
+
+// Function to restore the recording status overlay content to active recording state
+function restoreActiveRecordingUI() {
+    const contentDiv = recordingStatusOverlay.querySelector('.recording-status-content');
+    
+    // FIX: Calculate current time correctly for restoration
+    let currentRecordingSeconds = 0;
+    if (isRecording) {
+        // Use the corrected formula for total elapsed time
+        const currentElapsedMs = (Date.now() - recordingStartTime) + recordingDurationOffset;
+        currentRecordingSeconds = Math.floor(currentElapsedMs / 1000);
+    }
+    
+    // Rebuild the active recording UI structure
+    contentDiv.innerHTML = `
+        <div class="recording-indicator">
+            <span class="red-dot"></span>
+            <span class="status-text">${isRecordingPaused ? 'Paused' : 'Recording...'}</span>
+        </div>
+        <div id="recording-timestamp">${formatSecondsToHHMMSS(currentRecordingSeconds)}</div>
+        <div class="recording-controls">
+            <button id="ui-record-pause" class="focusable ${isRecordingPaused ? 'paused' : ''}">${isRecordingPaused ? 'Resume' : 'Pause'}</button>
+            <button id="ui-record-stop" class="focusable">Stop</button>
+        </div>
+    `;
+    
+    // Reattach listeners to the new buttons
+    const newPauseButton = contentDiv.querySelector('#ui-record-pause');
+    const newStopButton = contentDiv.querySelector('#ui-record-stop');
+
+    if (newPauseButton) newPauseButton.addEventListener('click', pauseResumeRecording);
+    if (newStopButton) newStopButton.addEventListener('click', handleDedicatedStopClick);
+    
+    // Ensure recording controls are visible initially if recording is active
+    if (isRecording) {
+        newPauseButton.style.display = 'inline-block';
+        newStopButton.style.display = 'inline-block';
+    }
+}
+
+// Initial restoration of UI structure when app loads, in case it wasn't done before
+// We call this right away to ensure the default structure is present for the first recording
+restoreActiveRecordingUI();

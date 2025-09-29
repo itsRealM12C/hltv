@@ -22,59 +22,52 @@ const RecordingComposition = ({ channelName }) => {
         alignItems: "center",
         padding: 50
       },
-      children: [
-        /* @__PURE__ */ jsxDEV(Audio, { src: staticFile("recording_success.mp3") }, void 0, false, {
-          fileName: "<stdin>",
-          lineNumber: 29,
-          columnNumber: 7
-        }),
-        /* @__PURE__ */ jsxDEV(
-          "div",
-          {
-            style: {
-              fontSize: "48px",
-              color: "white",
-              textAlign: "center",
-              fontFamily: "sans-serif",
-              transform: `scale(${scale})`,
-              opacity
-            },
-            children: [
-              /* @__PURE__ */ jsxDEV("p", { style: { fontWeight: "bold", margin: "0 0 10px 0" }, children: "RECORDING SAVED" }, void 0, false, {
-                fileName: "<stdin>",
-                lineNumber: 40,
-                columnNumber: 9
-              }),
-              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "32px", margin: 0 }, children: [
-                "Channel: ",
-                channelName
-              ] }, void 0, true, {
-                fileName: "<stdin>",
-                lineNumber: 41,
-                columnNumber: 9
-              }),
-              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "24px", marginTop: "20px" }, children: "Simulated FFmpeg render complete." }, void 0, false, {
-                fileName: "<stdin>",
-                lineNumber: 42,
-                columnNumber: 9
-              })
-            ]
+      children: /* @__PURE__ */ jsxDEV(
+        "div",
+        {
+          style: {
+            fontSize: "48px",
+            color: "white",
+            textAlign: "center",
+            fontFamily: "sans-serif",
+            transform: `scale(${scale})`,
+            opacity
           },
-          void 0,
-          true,
-          {
-            fileName: "<stdin>",
-            lineNumber: 30,
-            columnNumber: 7
-          }
-        )
-      ]
+          children: [
+            /* @__PURE__ */ jsxDEV("p", { style: { fontWeight: "bold", margin: "0 0 10px 0" }, children: "RECORDING SAVED" }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 43,
+              columnNumber: 9
+            }),
+            /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "32px", margin: 0 }, children: [
+              "Channel: ",
+              channelName
+            ] }, void 0, true, {
+              fileName: "<stdin>",
+              lineNumber: 44,
+              columnNumber: 9
+            }),
+            /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "24px", marginTop: "20px" }, children: "Simulated FFmpeg render complete." }, void 0, false, {
+              fileName: "<stdin>",
+              lineNumber: 45,
+              columnNumber: 9
+            })
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "<stdin>",
+          lineNumber: 33,
+          columnNumber: 7
+        }
+      )
     },
     void 0,
-    true,
+    false,
     {
       fileName: "<stdin>",
-      lineNumber: 21,
+      lineNumber: 25,
       columnNumber: 5
     }
   );

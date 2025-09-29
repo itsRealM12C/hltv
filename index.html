@@ -22,6 +22,8 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
     <script type="module" src="recorder.jsx"></script>
     <script type="module" src="app.js"></script>
+    <!-- User requested script for captioning functionality -->
+    <script src="https://player.mediaklikk.hu/playernew/js/jwp8/jwplayer.js"></script>
 </head>
 <body>
     <header>
@@ -30,6 +32,7 @@
             <button class="nav-button active" data-view="live-tv">Live TV</button>
             <button class="nav-button" data-view="recordings">Recordings</button>
             <button class="nav-button" data-view="captures">Captures</button>
+            <button class="nav-button" data-view="settings">Settings</button>
         </nav>
     </header>
     <main id="main-content">
@@ -44,6 +47,21 @@
                 </button>
                 <button class="channel-button focusable" data-channel-id="3" data-channel-url="https://c201-node61-cdn.connectmedia.hu/110102/2449392930b8d80b9a5e80c1a9be8b0e/68da2b55/index.m3u8" data-channel-name="M2">
                     3. M2
+                </button>
+                <button class="channel-button focusable" data-channel-id="4" data-channel-url="https://c201-node62-cdn.connectmedia.hu/150104/601bd25e6c88cddcca86c4ba45ec8927/68da9e5a/index.m3u8" data-channel-name="M4 Sport">
+                    4. M4 Sport
+                </button>
+                <button class="channel-button focusable" data-channel-id="5" data-channel-url="https://c202-node62-cdn.connectmedia.hu/150108/b56fb5c15b2ae8656c345b9179797fe4/68da9f78/index.m3u8" data-channel-name="M4 Sport 2">
+                    5. M4 Sport 2
+                </button>
+                <button class="channel-button focusable" data-channel-id="6" data-channel-url="https://c201-node62-cdn.connectmedia.hu/150109/e95304df4cb1ee757c003fe9b7a5c0fb/68daa00f/index.m3u8" data-channel-name="M4 Sport 3">
+                    6. M4 Sport 3
+                </button>
+                <button class="channel-button focusable" data-channel-id="7" data-channel-url="https://c201-node61-cdn.connectmedia.hu/150110/323ab759df9f3e03809c580b8a485898/68daa076/index.m3u8" data-channel-name="M4 Sport 4">
+                    7. M4 Sport 4
+                </button>
+                <button class="channel-button focusable" data-channel-id="8" data-channel-url="https://c402-node61-cdn.connectmedia.hu/150111/d73176fe0f6fe995c8a4f4da4b388b84/68daa0c8/index.m3u8" data-channel-name="M4 Sport 5">
+                    8. M4 Sport 5
                 </button>
             </div>
         </div>
@@ -61,6 +79,158 @@
                 <!-- Captures will be added here -->
             </ul>
             <p id="no-captures" style="text-align: center;">No screenshots yet. Hit 'Capture' while watching TV!</p>
+        </div>
+        
+        <div id="settings-view" class="view hidden">
+            <h2>Settings</h2>
+            <div class="settings-section">
+                <h3>Appearance</h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="language-select">Select Language:</label>
+                    <select id="language-select" class="focusable">
+                        <!-- Options will be populated via JS -->
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="gui-scale-select">GUI Scale:</label>
+                    <select id="gui-scale-select" class="focusable">
+                        <option value="small">Small</option>
+                        <option value="medium">Medium (Default)</option>
+                        <option value="large">Large</option>
+                    </select>
+                </div>
+                
+                <label for="theme-select">Select Theme:</label>
+                <select id="theme-select" class="focusable">
+                    <option value="dark">Dark Theme (Default)</option>
+                    <option value="light">Light Theme (Experimental)</option>
+                </select>
+                <button id="apply-theme-button" class="focusable">Apply Theme</button>
+                
+                <div style="margin-top: 20px;">
+                    <label for="font-select">Select Font Family:</label>
+                    <select id="font-select" class="focusable">
+                        <option value="sans-serif">Sans Serif (Default)</option>
+                        <option value="serif">Serif</option>
+                        <option value="monospace">Monospace</option>
+                        <option value="system-ui">System UI</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section" id="captions-style-section">
+                <h3>Captions Style</h3>
+                <div class="setting-group">
+                    <label for="caption-font-select">Caption Font Family:</label>
+                    <select id="caption-font-select" class="focusable">
+                        <option value="sans-serif">Sans Serif (Default)</option>
+                        <option value="serif">Serif</option>
+                        <option value="monospace">Monospace</option>
+                        <option value="system-ui">System UI</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="caption-size-select">Caption Size:</label>
+                    <select id="caption-size-select" class="focusable">
+                        <option value="small">Small</option>
+                        <option value="medium">Medium (Default)</option>
+                        <option value="large">Large</option>
+                        <option value="extra-large">Extra Large</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="caption-position-select">Caption Position:</label>
+                    <select id="caption-position-select" class="focusable">
+                        <option value="bottom">Bottom (Default)</option>
+                        <option value="center">Center</option>
+                        <option value="top">Top</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label for="caption-text-color-input">Text Color:</label>
+                    <input type="color" id="caption-text-color-input" value="#ffffff" class="focusable">
+                    
+                    <label for="caption-text-transparency-input">Text Transparency:</label>
+                    <input type="range" id="caption-text-transparency-input" min="0" max="100" value="100" class="focusable">
+                    <span id="caption-text-transparency-display">100%</span>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="caption-bg-color-input">Background Color:</label>
+                    <input type="color" id="caption-bg-color-input" value="#000000" class="focusable">
+
+                    <label for="caption-bg-transparency-input">Background Transparency:</label>
+                    <input type="range" id="caption-bg-transparency-input" min="0" max="100" value="80" class="focusable">
+                    <span id="caption-bg-transparency-display">80%</span>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="caption-outline-select">Outline Style:</label>
+                    <select id="caption-outline-select" class="focusable">
+                        <option value="none">None</option>
+                        <option value="solid">Solid Black</option>
+                        <option value="thin">Thin White</option>
+                        <option value="thick">Thick Yellow</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label for="caption-shadow-select">Shadow/Glow Style:</label>
+                    <select id="caption-shadow-select" class="focusable">
+                        <option value="none">None</option>
+                        <option value="raised">Raised Shadow</option>
+                        <option value="depressed">Depressed Shadow</option>
+                        <option value="glow">Soft Glow</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Button Customization</h3>
+                <label for="button-color-display">Primary Button Color:</label>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <div id="button-color-display" style="width: 30px; height: 30px; border-radius: 50%; border: 2px solid white;"></div>
+                    <button id="open-color-picker-button" class="focusable">Choose Color</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Live TV Quality & Recording</h3>
+                <label for="live-tv-frames">Live TV Frames (FPS):</label>
+                <select id="live-tv-frames" class="focusable" style="margin-bottom: 15px;">
+                    <option value="20">20 FPS (Low)</option>
+                    <option value="30">30 FPS (Default)</option>
+                    <option value="60">60 FPS (High)</option>
+                </select>
+                
+                <label for="live-tv-quality">Live TV Quality (Bitrate Mbps):</label>
+                <select id="live-tv-quality" class="focusable" style="margin-bottom: 15px;">
+                    <option value="5000000">5 Mbps (Standard)</option>
+                    <option value="10000000">10 Mbps (HD Default)</option>
+                    <option value="20000000">20 Mbps (High HD)</option>
+                </select>
+                
+                <label for="recording-conversion">Recording Conversion Format:</label>
+                <select id="recording-conversion" class="focusable">
+                    <option value="mp4">MP4 (Default)</option>
+                    <option value="webm">WebM</option>
+                    <option value="avi">AVI</option>
+                    <option value="mkv">MKV</option>
+                    <option value="wmv">WMV</option>
+                    <option value="mov">MOV</option>
+                    <option value="mpeg">MPEG</option>
+                    <option value="avchd">AVCHD</option>
+                    <option value="flv">Flash Video (FLV)</option>
+                    <option value="mpg">MPG</option>
+                </select>
+                
+                <p style="margin-top: 15px;">Note: Quality/Frames affect recording settings. Conversion is simulated output format.</p>
+            </div>
         </div>
 
         <!-- The main Guide view is removed from main-content, but kept here as a fallback view -->
@@ -135,6 +305,7 @@
                     <button id="ui-rewind-button" class="focusable">≪ 10s</button>
                     <button id="ui-play-pause-button" class="focusable">Pause</button>
                     <button id="ui-fast-forward-button" class="focusable">10s ≫</button>
+                    <button id="ui-cc-button" class="focusable">CC Off</button>
                     <button id="ui-guide-button" class="focusable">Guide</button>
                     <button id="ui-record-button" class="focusable">Record</button>
                     <button id="ui-capture-button" class="focusable">Capture</button>
@@ -154,6 +325,25 @@
             <div id="custom-alert-buttons">
                 <!-- Buttons injected here -->
             </div>
+        </div>
+    </div>
+    
+    <!-- Custom Color Picker Modal -->
+    <div id="color-picker-modal" class="hidden">
+        <div class="color-picker-content">
+            <button id="color-picker-close-button" class="close-button focusable">X</button>
+            <h3>Select Primary Color (Built-in Picker)</h3>
+            <p>Choose a color for interactive elements.</p>
+            <input type="color" id="html-color-input" value="#00bcd4">
+            <div id="color-swatches">
+                <div class="color-swatch focusable" data-color="#00bcd4" style="background-color: #00bcd4;"></div>
+                <div class="color-swatch focusable" data-color="#1e88e5" style="background-color: #1e88e5;"></div>
+                <div class="color-swatch focusable" data-color="#4caf50" style="background-color: #4caf50;"></div>
+                <div class="color-swatch focusable" data-color="#ff9800" style="background-color: #ff9800;"></div>
+                <div class="color-swatch focusable" data-color="#f44336" style="background-color: #f44336;"></div>
+                <div class="color-swatch focusable" data-color="#9c27b0" style="background-color: #9c27b0;"></div>
+            </div>
+            <button id="apply-color-button" class="focusable">Apply Selected Color</button>
         </div>
     </div>
     
@@ -186,6 +376,11 @@
                 <p id="transfer-status-receive"></p>
             </div>
         </div>
+    </div>
+    
+    <!-- Notification Popup -->
+    <div id="notification-popup" class="hidden notification-hidden">
+        <p id="notification-message">Notification</p>
     </div>
 </body>
 </html>

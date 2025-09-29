@@ -1,5 +1,25 @@
+:root {
+    --primary-color: #00bcd4; /* Default cyan (little bit dark) */
+    --primary-text-color: #1a1a1a;
+    --main-font-family: sans-serif; /* New font variable */
+    /* NEW GUI Scaling Variables */
+    --scale-factor: 1.0; 
+    --base-font-size: 16px;
+    
+    /* NEW Caption Style Variables */
+    --caption-text-color: #ffffff;
+    --caption-bg-color: #000000; /* This will be overridden by RGBA in JS but kept as solid default */
+    --caption-font-family: sans-serif;
+    --caption-text-opacity: 1; /* 0 to 1 */
+    --caption-bg-opacity: 0.8; /* 0 to 1 */
+    --caption-text-shadow: none; /* For outline, shadow, glow */
+    /* NEW Size and Position Variables */
+    --caption-font-size: 1.2rem;
+    --caption-position-vertical: end; /* 'start', 'center', 'end' */
+}
+
 body {
-    font-family: sans-serif;
+    font-family: var(--main-font-family); /* Use new variable */
     margin: 0;
     padding: 0;
     background-color: #1a1a1a;
@@ -8,24 +28,30 @@ body {
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
+    font-size: calc(var(--base-font-size) * var(--scale-factor)); /* Apply scale */
 }
+
+/* Base element sizing needs to use EM or REM for scaling, but for robust scaling 
+   across the layout, we adjust margins/paddings based on the scale factor as well. 
+   Using calc() on font-size is the easiest global way. */
 
 header {
     background-color: #333;
     width: 100%;
     text-align: center;
-    padding: 10px 0;
+    padding: calc(10px * var(--scale-factor)) 0; /* Apply scale factor */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 h1 {
     margin: 0;
-    color: #00bcd4; /* A light blue color for emphasis */
+    color: var(--primary-color); /* Use variable */
+    font-size: 1.5em; /* Use relative units */
 }
 
 /* Navigation Tabs */
 #main-nav {
-    margin-top: 10px;
+    margin-top: calc(10px * var(--scale-factor));
     display: flex;
     justify-content: center;
 }
@@ -34,11 +60,11 @@ h1 {
     background-color: #555;
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: calc(10px * var(--scale-factor)) calc(20px * var(--scale-factor));
     cursor: pointer;
     font-size: 1em;
     transition: background-color 0.3s;
-    margin: 0 5px;
+    margin: 0 calc(5px * var(--scale-factor));
     border-radius: 4px;
 }
 
@@ -47,8 +73,8 @@ h1 {
 }
 
 .nav-button.active {
-    background-color: #00bcd4;
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
 }
 
 /* New focus style for keyboard navigation */
@@ -98,6 +124,46 @@ a, button, .channel-button, .nav-button {
     -webkit-user-select: none;
 }
 
+/* --- Chooser/Picker UI Style (Select/Input) (NEW) --- */
+/* Targetting select and text/number inputs inside main content (settings/modals) */
+#main-content select, 
+#main-content input[type="text"], 
+#main-content input[type="number"],
+#main-content input[type="range"] {
+    background-color: #444;
+    color: white;
+    border: 1px solid #666;
+    padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
+    border-radius: 4px;
+    font-size: 1em;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+#main-content select:hover, 
+#main-content input[type="text"]:hover, 
+#main-content input[type="number"]:hover {
+    background-color: #555;
+    border-color: var(--primary-color);
+}
+
+/* Specific styling for select dropdown icon on webkit */
+#main-content select {
+    /* Remove default arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Add custom caret icon */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23ffffff' d='M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px; /* Space for the icon */
+    min-width: 150px;
+}
+
+/* Focus styles inherited from .focusable:focus will apply the yellow outline */
+
 #main-content {
     padding: 20px;
     flex-grow: 1;
@@ -117,10 +183,10 @@ a, button, .channel-button, .nav-button {
 }
 
 .channel-button {
-    background-color: #00bcd4;
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
     border: none;
-    padding: 15px;
+    padding: calc(15px * var(--scale-factor));
     font-size: 1.2em;
     cursor: pointer;
     border-radius: 5px;
@@ -129,7 +195,8 @@ a, button, .channel-button, .nav-button {
 }
 
 .channel-button:hover {
-    background-color: #0097a7;
+    background-color: var(--primary-color); /* Use variable */
+    filter: brightness(0.9); /* Slightly darker on hover */
 }
 
 /* Guide View Styles */
@@ -230,8 +297,8 @@ a, button, .channel-button, .nav-button {
 }
 
 .guide-channel-entry.selected {
-    background-color: #00bcd4;
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
 }
 
 .guide-channel-entry:hover:not(.selected) {
@@ -272,8 +339,8 @@ a, button, .channel-button, .nav-button {
 
 .guide-program {
     height: 100%;
-    background-color: #00bcd4; /* Use a brighter color for programs */
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
     border: none;
     margin-right: 5px;
     border-radius: 3px;
@@ -295,7 +362,8 @@ a, button, .channel-button, .nav-button {
 }
 
 .guide-program:hover {
-    background-color: #0097a7;
+    background-color: var(--primary-color); /* Use variable */
+    filter: brightness(0.9);
 }
 
 .guide-program-time {
@@ -666,7 +734,7 @@ a, button, .channel-button, .nav-button {
     transform: translateX(-50%);
     width: 20px;
     height: 20px;
-    background-color: #00bcd4;
+    background-color: var(--primary-color); /* Use variable */
     border-radius: 50%;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
     border: 3px solid white;
@@ -726,8 +794,8 @@ a, button, .channel-button, .nav-button {
 }
 
 #custom-alert-buttons button {
-    background-color: #00bcd4;
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -738,7 +806,8 @@ a, button, .channel-button, .nav-button {
 }
 
 #custom-alert-buttons button:hover {
-    background-color: #0097a7;
+    background-color: var(--primary-color); /* Use variable */
+    filter: brightness(0.9);
 }
 
 #custom-alert-buttons button.focused {
@@ -761,7 +830,7 @@ a, button, .channel-button, .nav-button {
 }
 
 .recording-status-content {
-    background-color: rgba(179, 0, 0, 0.9); /* Dark Red background */
+    background-color: rgba(0, 0, 0, 0.9); /* Changed from Dark Red to Black */
     color: white;
     padding: 10px 15px;
     border-radius: 8px;
@@ -799,7 +868,7 @@ a, button, .channel-button, .nav-button {
     background-color: rgba(0, 0, 0, 0.3);
     color: white;
     border: 1px solid white;
-    padding: 5px 10px;
+    padding: calc(5px * var(--scale-factor)) calc(10px * var(--scale-factor));
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
@@ -815,6 +884,230 @@ a, button, .channel-button, .nav-button {
     transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; /* Ensure transition exists */
 }
 
+/* New Progress Bar style for Finalization */
+.finalizing-progress-bar {
+    width: 200px;
+    height: 10px;
+    background-color: #444;
+    border-radius: 5px;
+    margin-left: 15px;
+}
+
+.finalizing-progress-bar-fill {
+    height: 100%;
+    background-color: var(--primary-color); /* Use variable */
+    border-radius: 5px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.finalizing-text {
+    font-weight: bold;
+    color: var(--primary-color); /* Use variable */
+}
+
+/* Settings View Styles */
+.settings-section {
+    background-color: #2c2c2c;
+    padding: calc(20px * var(--scale-factor));
+    margin-bottom: calc(20px * var(--scale-factor));
+    border-radius: 5px;
+}
+
+.settings-section .setting-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.settings-section .setting-group label {
+    flex-basis: 100%; /* Make labels full width */
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.settings-section .setting-group input[type="color"] {
+    width: 60px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    /* Ensure color input border respects focus style */
+}
+
+.settings-section .setting-group input[type="range"] {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+/* Simulate Caption Display Style (for demonstration) */
+#tv-player::cue {
+    /* Set all derived style properties with !important to ensure they override browser defaults */
+    color: var(--caption-text-color) !important;
+    /* Use var(--caption-bg-color) which is set as RGBA in app.js */
+    background-color: var(--caption-bg-color) !important; 
+    font-family: var(--caption-font-family) !important;
+    /* Note: Text opacity variable is often unreliable on ::cue directly, 
+       but we keep it for potential browser support. */
+    opacity: var(--caption-text-opacity) !important; 
+    text-shadow: var(--caption-text-shadow) !important;
+    font-size: var(--caption-font-size) !important; /* NEW Size */
+    /* Try to force default alignment attributes to enable position changes (though position is often player controlled) */
+    align-items: var(--caption-position-vertical) !important;
+    text-align: center !important;
+    /* Ensure line height does not interfere with font size */
+    line-height: 1.2 !important; 
+    
+    /* Ensure background is correctly rendered, some browsers prefer background over background-color for alpha channel */
+    background: var(--caption-bg-color) !important; /* Use both background and background-color */
+}
+
+/* Ensure font color is consistent even when opacity is low on the cue container */
+#tv-player::cue-text {
+    color: var(--caption-text-color) !important;
+    /* Opacity is applied to the entire cue box, not just text */
+}
+
+/* If using a custom caption layer, we would use --caption-position-vertical for positioning. 
+   For example, if we had a div wrapper around the captions:
+   
+   .caption-wrapper {
+       position: absolute;
+       bottom: 0;
+       left: 50%;
+       transform: translateX(-50%);
+       display: flex;
+       justify-content: center;
+       align-items: var(--caption-position-vertical);
+   }
+*/
+
+/* --- Notification Popup Styles (New) --- */
+#notification-popup {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 6000; /* Highest priority */
+    min-width: 250px;
+    pointer-events: none; /* Cannot be clicked */
+    opacity: 1;
+    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+/* Initial state (hidden outside of the viewport) */
+#notification-popup.notification-hidden {
+    transform: translateX(calc(-100% - 20px)); /* Slide out completely to the left */
+    opacity: 0;
+}
+
+/* Show animation (Slide right in) */
+@keyframes slide-in-right {
+    from {
+        transform: translateX(calc(-100% - 20px));
+        opacity: 0.5;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Hide animation (Slide left out) */
+@keyframes slide-out-left {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(calc(-100% - 20px));
+        opacity: 0;
+    }
+}
+
+#notification-popup.notification-visible {
+    animation: slide-in-right 0.4s ease-out forwards;
+}
+
+#notification-popup.notification-hiding {
+    animation: slide-out-left 0.4s ease-in forwards;
+}
+
+/* Experimental Light Theme Styles */
+body.light-theme {
+    background-color: #f0f0f0;
+    color: #1a1a1a;
+}
+
+body.light-theme header {
+    background-color: #ccc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme h1 {
+    color: #1e88e5; /* Blue - keep fixed for light theme accent */
+}
+
+body.light-theme .nav-button {
+    background-color: #ddd;
+    color: #1a1a1a;
+}
+
+body.light-theme .nav-button.active {
+    background-color: #1e88e5; /* Keep fixed for light theme */
+    color: white;
+}
+
+body.light-theme .channel-button {
+    background-color: #1e88e5; /* Keep fixed for light theme */
+    color: white;
+}
+
+body.light-theme .channel-button:hover {
+    background-color: #1565c0;
+}
+
+body.light-theme .settings-section, 
+body.light-theme #recordings-list li,
+body.light-theme #captures-list li {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    color: #1a1a1a;
+}
+
+body.light-theme .settings-section h3 {
+    color: #1e88e5;
+}
+
+/* Light Theme overrides for Chooser/Picker */
+body.light-theme #main-content select, 
+body.light-theme #main-content input[type="text"], 
+body.light-theme #main-content input[type="number"],
+body.light-theme #main-content input[type="range"] {
+    background-color: #eee;
+    color: #1a1a1a;
+    border: 1px solid #ccc;
+}
+
+body.light-theme #main-content select:hover, 
+body.light-theme #main-content input[type="text"]:hover, 
+body.light-theme #main-content input[type="number"]:hover {
+    background-color: #ddd;
+    border-color: #1e88e5;
+}
+body.light-theme #main-content select {
+    /* Update custom caret color for light theme */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%231a1a1a' d='M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z'/%3E%3C/svg%3E");
+}
 
 /* --- P2P Transfer Modal Styles (New) --- */
 #p2p-transfer-modal {
@@ -857,7 +1150,7 @@ a, button, .channel-button, .nav-button {
 }
 
 .transfer-content h3, .transfer-content h4 {
-    color: #00bcd4;
+    color: var(--primary-color); /* Use variable */
     text-align: center;
 }
 
@@ -921,8 +1214,8 @@ a, button, .channel-button, .nav-button {
 }
 
 #transfer-generate-code, #transfer-start-receive {
-    background-color: #00bcd4;
-    color: #1a1a1a;
+    background-color: var(--primary-color); /* Use variable */
+    color: var(--primary-text-color); /* Use variable */
     width: 100%;
     padding: 12px;
     border-radius: 5px;
@@ -933,20 +1226,19 @@ a, button, .channel-button, .nav-button {
 }
 
 #transfer-start-receive:hover, #transfer-generate-code:hover {
-    background-color: #0097a7;
+    background-color: var(--primary-color); /* Use variable */
+    filter: brightness(0.9);
 }
 
-
-
-/* --- P2P Transfer Modal Styles (New) --- */
-#p2p-transfer-modal {
+/* --- Custom Color Picker Styles (NEW) --- */
+#color-picker-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    z-index: 4900; 
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 5500;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -954,106 +1246,109 @@ a, button, .channel-button, .nav-button {
     transition: opacity 0.3s;
     pointer-events: none;
 }
-#p2p-transfer-modal:not(.hidden) {
+#color-picker-modal:not(.hidden) {
     opacity: 1;
     pointer-events: auto;
 }
 
-.transfer-content {
-    background-color: #222;
-    padding: 40px;
+.color-picker-content {
+    background-color: #333;
+    padding: 30px;
     border-radius: 10px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
-    max-width: 500px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
     width: 90%;
-    color: white;
-    position: relative;
-    /* Animation */
-    transform: translateY(0);
-    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
-}
-
-#p2p-transfer-modal.hidden .transfer-content {
-    transform: translateY(-20px);
-    opacity: 0;
-}
-
-.transfer-content h3, .transfer-content h4 {
-    color: #00bcd4;
     text-align: center;
+    position: relative;
+    transform: scale(1);
+    transition: transform 0.3s ease-out;
+    border: 3px solid var(--primary-color); /* Added style */
 }
 
-.transfer-content .close-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+#color-picker-modal.hidden .color-picker-content {
+    transform: scale(0.95);
+}
+
+#html-color-input {
+    width: 100%;
+    height: 50px;
+    margin: 15px 0;
+    border: 3px solid #ccc; /* Added border */
     background: none;
-    border: none;
-    color: white;
-    font-size: 1.2em;
+    padding: 0;
     cursor: pointer;
+    border-radius: 5px; /* Added border radius */
+    overflow: hidden; /* Ensure color swatch fits */
 }
 
-#transfer-mode-selection {
+#color-swatches {
     display: flex;
-    justify-content: center;
-    gap: 10px;
+    justify-content: space-around;
     margin: 20px 0;
 }
 
-#transfer-mode-selection button {
-    background-color: #555;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    font-size: 1em;
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; /* Added transitions */
+    border: 3px solid white;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    flex-shrink: 0; /* Prevent squishing */
 }
 
-#transfer-mode-selection button:hover {
-    background-color: #777;
+.color-swatch:hover {
+    transform: scale(1.1);
 }
 
-#transfer-content-select, #transfer-code-input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0 20px 0;
-    border-radius: 5px;
-    border: 1px solid #444;
-    background-color: #333;
+.color-swatch.focusable:focus,
+.color-swatch.selected {
+    outline: 3px solid yellow;
+    box-shadow: 0 0 10px yellow;
+    transform: scale(1.1);
+}
+
+#apply-color-button {
+    background-color: #4caf50;
     color: white;
-    box-sizing: border-box;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
     font-size: 1em;
-}
-
-#transfer-code-display {
-    text-align: center;
-    font-size: 1.5em;
     font-weight: bold;
-    color: #4caf50;
-    padding: 10px;
-    background: #333;
-    border-radius: 5px;
-    margin-top: 15px;
-}
-#sharing-code {
-    letter-spacing: 5px;
-}
-
-#transfer-generate-code, #transfer-start-receive {
-    background-color: #00bcd4;
-    color: #1a1a1a;
     width: 100%;
-    padding: 12px;
-    border-radius: 5px;
-    font-size: 1.1em;
-    font-weight: bold;
-    margin-bottom: 10px;
-    transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s; /* Added transitions */
 }
 
-#transfer-start-receive:hover, #transfer-generate-code:hover {
-    background-color: #0097a7;
+/* Ensure Light Theme updates button color on body.light-theme */
+body.light-theme .color-picker-content {
+    background-color: #f0f0f0;
+    border-color: #1e88e5;
+    color: #1a1a1a;
+}
+
+body.light-theme .color-picker-content h3, 
+body.light-theme .color-picker-content p {
+    color: #1a1a1a;
+}
+
+body.light-theme .color-picker-content .close-button {
+    color: #1a1a1a;
+}
+
+body.light-theme #transfer-content-select, 
+body.light-theme #transfer-code-input {
+    background-color: #fff;
+    color: #1a1a1a;
+    border: 1px solid #ddd;
+}
+
+/* --- Language Flag Styles --- */
+.flag-icon {
+    width: 24px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 8px;
+    border: 1px solid #ccc;
 }
